@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Empresa {
+  id          String       @id @default(cuid())
+  nome        String
+  razaoSocial String
+  cnpj        String       @unique
+  endereco    String
+  cidade      String
+  estado      String
+  criadoEm    DateTime     @default(now())
+  contas      Conta[]
+  lancamentos Lancamento[]
+}
+
+model Conta {
+  id          String       @id @default(cuid())
+  codigo      String
+  nome        String
+  tipo        TipoConta
+  empresa     Empresa      @relation(fields: [empresaId], references: [id])
+  empresaId   String
+  lancamentos Lancamento[]
+}
+
+model Lancamento {
+  id          String         @id @default(cuid())
+  descricao   String
+  valor       Decimal
+  tipo        TipoLancamento
+  data        DateTime
+  conta       Conta          @relation(fields: [contaId], references: [id])
+  contaId     String
+  empresa     Empresa        @relation(fields: [empresaId], references: [id])
+  empresaId   String
+  criadoEm    DateTime       @default(now())
+}
+
+enum TipoConta {
+  ATIVO
+  PASSIVO
+  PATRIMONIO_LIQUIDO
+  RECEITA
+  DESPESA
+}
+
+enum TipoLancamento {
+  DEBITO
+  CREDITO
+}
