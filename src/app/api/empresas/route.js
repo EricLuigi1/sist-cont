@@ -1,12 +1,14 @@
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
-  const empresas = await prisma.empresa.findMany()
-  return NextResponse.json(empresas)
-}
-
 export async function POST(request) {
+  const session = await auth()
+
+  if (!session) {
+    return NextResponse.json({ erro: 'Não autorizado!' }, { status: 401 })
+  }
+
   const body = await request.json()
 
   const empresa = await prisma.empresa.create({
@@ -17,6 +19,12 @@ export async function POST(request) {
       endereco: body.endereco,
       cidade: body.cidade,
       estado: body.estado,
+      usuarios: {
+        create: {
+          usuarioId: session.user.id,
+          papel: 'ADMIN',
+        },
+      },
     },
   })
 

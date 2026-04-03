@@ -30,10 +30,11 @@ export default function NovaEmpresaPage() {
     })
 
     if (res.ok) {
-      router.push('/empresas')
+      const data = await res.json()
+      router.push(`/empresas/${data.id}`)
     } else {
-      alert('Erro ao cadastrar empresa!')
-      setLoading(false)
+        alert('Erro ao cadastrar empresa!')
+        setLoading(false)
     }
   }
 

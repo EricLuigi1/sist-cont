@@ -8,17 +8,41 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Usuario {
+  id             String           @id @default(cuid())
+  nome           String
+  email          String           @unique
+  senha          String
+  criadoEm      DateTime         @default(now())
+  empresas       EmpresaUsuario[]
+  lancamentos    Lancamento[]
+}
+
 model Empresa {
-  id          String       @id @default(cuid())
-  nome        String
-  razaoSocial String
-  cnpj        String       @unique
-  endereco    String
-  cidade      String
-  estado      String
-  criadoEm    DateTime     @default(now())
-  contas      Conta[]
-  lancamentos Lancamento[]
+  id             String           @id @default(cuid())
+  nome           String
+  razaoSocial    String
+  cnpj           String           @unique
+  endereco       String
+  cidade         String
+  estado         String
+  codigoConvite  String           @unique @default(cuid())
+  criadoEm      DateTime         @default(now())
+  usuarios       EmpresaUsuario[]
+  contas         Conta[]
+  lancamentos    Lancamento[]
+}
+
+model EmpresaUsuario {
+  id         String   @id @default(cuid())
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId  String
+  papel      Papel    @default(COLABORADOR)
+  criadoEm  DateTime @default(now())
+
+  @@unique([usuarioId, empresaId])
 }
 
 model Conta {
@@ -41,7 +65,9 @@ model Lancamento {
   contaId     String
   empresa     Empresa        @relation(fields: [empresaId], references: [id])
   empresaId   String
-  criadoEm    DateTime       @default(now())
+  usuario     Usuario        @relation(fields: [usuarioId], references: [id])
+  usuarioId   String
+  criadoEm   DateTime       @default(now())
 }
 
 enum TipoConta {
@@ -55,4 +81,9 @@ enum TipoConta {
 enum TipoLancamento {
   DEBITO
   CREDITO
+}
+
+enum Papel {
+  ADMIN
+  COLABORADOR
 }
