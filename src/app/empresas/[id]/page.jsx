@@ -6,11 +6,13 @@ export default async function EmpresaPage({ params }) {
   const session = await auth()
   if (!session) redirect('/login')
 
+  const { id } = await params
+
   const vinculo = await prisma.empresaUsuario.findUnique({
     where: {
       usuarioId_empresaId: {
         usuarioId: session.user.id,
-        empresaId: params.id,
+        empresaId: id,
       },
     },
     include: {
