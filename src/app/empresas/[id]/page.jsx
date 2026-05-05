@@ -23,22 +23,25 @@ export default async function EmpresaPage({ params }) {
   const empresa = vinculo.empresa
   const isAdmin = vinculo.papel === 'ADMIN'
 
-  const lancamentos = await prisma.lancamento.findMany({
+  const lotes = await prisma.lote.findMany({
     where: { empresaId: id },
     orderBy: { data: 'desc' },
+    include: { lancamentos: true },
   })
 
   const hoje = new Date()
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-  const lancamentosDoMes = lancamentos.filter(l => new Date(l.data) >= inicioMes)
+  const lotesDoMes = lotes.filter(l => new Date(l.data) >= inicioMes)
+
+  const lancamentosDoMes = lotesDoMes.flatMap(l => l.lancamentos)
 
   const totalReceitas = lancamentosDoMes.filter(l => l.tipo === 'CREDITO').reduce((acc, l) => acc + Number(l.valor), 0)
   const totalDespesas = lancamentosDoMes.filter(l => l.tipo === 'DEBITO').reduce((acc, l) => acc + Number(l.valor), 0)
   const resultado = totalReceitas - totalDespesas
-  const ultimoLancamento = lancamentos[0] || null
+  const ultimoLote = lotes[0] || null
 
-  const lancamentosDoUsuario = lancamentos.filter(l => l.usuarioId === session.user.id)
-  const lancamentosHoje = lancamentosDoUsuario.filter(l => new Date(l.data).toDateString() === hoje.toDateString())
+  const lotesDoUsuario = lotes.filter(l => l.usuarioId === session.user.id)
+  const lotesHoje = lotesDoUsuario.filter(l => new Date(l.data).toDateString() === hoje.toDateString())
 
   const colaboradores = await prisma.empresaUsuario.count({ where: { empresaId: id } })
 
@@ -63,7 +66,7 @@ export default async function EmpresaPage({ params }) {
           </div>
           <div className="border rounded-lg p-6">
             <p className="text-sm text-gray-500 mb-1">Total de lançamentos no mês</p>
-            <p className="text-2xl font-bold">{lancamentosDoMes.length}</p>
+            <p className="text-2xl font-bold">{lotesDoMes.length}</p>
           </div>
           <div className="border rounded-lg p-6">
             <p className="text-sm text-gray-500 mb-1">Colaboradores</p>
@@ -71,10 +74,10 @@ export default async function EmpresaPage({ params }) {
           </div>
           <div className="border rounded-lg p-6">
             <p className="text-sm text-gray-500 mb-1">Último lançamento</p>
-            {ultimoLancamento ? (
+            {ultimoLote ? (
               <>
-                <p className="font-medium">{ultimoLancamento.descricao}</p>
-                <p className="text-sm text-gray-400">{new Date(ultimoLancamento.data).toLocaleDateString('pt-BR')}</p>
+                <p className="font-medium">{ultimoLote.historico}</p>
+                <p className="text-sm text-gray-400">{new Date(ultimoLote.data).toLocaleDateString('pt-BR')}</p>
               </>
             ) : (
               <p className="text-gray-400 text-sm">Nenhum lançamento ainda</p>
@@ -85,24 +88,22 @@ export default async function EmpresaPage({ params }) {
         <div className="grid grid-cols-2 gap-4">
           <div className="border rounded-lg p-6">
             <p className="text-sm text-gray-500 mb-1">Seus lançamentos hoje</p>
-            <p className="text-2xl font-bold">{lancamentosHoje.length}</p>
+            <p className="text-2xl font-bold">{lotesHoje.length}</p>
           </div>
           <div className="border rounded-lg p-6">
             <p className="text-sm text-gray-500 mb-1">Seus lançamentos no mês</p>
-            <p className="text-2xl font-bold">{lancamentosDoUsuario.filter(l => new Date(l.data) >= inicioMes).length}</p>
+            <p className="text-2xl font-bold">{lotesDoUsuario.filter(l => new Date(l.data) >= inicioMes).length}</p>
           </div>
           <div className="col-span-2 border rounded-lg p-6">
             <p className="text-sm text-gray-500 mb-2">Seus últimos lançamentos</p>
-            {lancamentosDoUsuario.length === 0 ? (
+            {lotesDoUsuario.length === 0 ? (
               <p className="text-gray-400 text-sm">Nenhum lançamento ainda</p>
             ) : (
               <div className="flex flex-col gap-2">
-                {lancamentosDoUsuario.slice(0, 5).map(l => (
+                {lotesDoUsuario.slice(0, 5).map(l => (
                   <div key={l.id} className="flex justify-between text-sm border-b pb-2">
-                    <span>{l.descricao}</span>
-                    <span className={l.tipo === 'CREDITO' ? 'text-green-600' : 'text-red-600'}>
-                      {l.tipo === 'CREDITO' ? '+' : '-'}R$ {Number(l.valor).toFixed(2)}
-                    </span>
+                    <span>{l.historico}</span>
+                    <span className="text-gray-500">{new Date(l.data).toLocaleDateString('pt-BR')}</span>
                   </div>
                 ))}
               </div>
