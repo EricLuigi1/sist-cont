@@ -1,7 +1,68 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+
+function ContaInput({ contas, value, onChange }) {
+  const [busca, setBusca] = useState('')
+  const [aberto, setAberto] = useState(false)
+  const [contaSelecionada, setContaSelecionada] = useState(null)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setAberto(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (!value) {
+      setContaSelecionada(null)
+      setBusca('')
+    }
+  }, [value])
+
+  const sugestoes = busca.length === 0 ? [] : contas.filter(c =>
+    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
+    c.codigo.includes(busca)
+  ).slice(0, 8)
+
+  function selecionar(conta) {
+    setContaSelecionada(conta)
+    setBusca(conta.codigo + ' - ' + conta.nome)
+    setAberto(false)
+    onChange(conta.id)
+  }
+
+  return (
+    <div className="relative flex-1" ref={ref}>
+      <input
+        type="text"
+        placeholder="Digite o código ou nome da conta..."
+        value={busca}
+        onChange={e => {
+          setBusca(e.target.value)
+          setAberto(true)
+          if (!e.target.value) onChange('')
+        }}
+        onFocus={() => setAberto(true)}
+        className="w-full border rounded px-3 py-2 text-sm"
+      />
+      {aberto && sugestoes.length > 0 && (
+        <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+          {sugestoes.map(c => (
+            <button key={c.id} type="button" onClick={() => selecionar(c)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex gap-2">
+              <span className="font-mono text-gray-500 w-16 shrink-0">{c.codigo}</span>
+              <span>{c.nome}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function NovoLancamentoPage() {
   const router = useRouter()
@@ -108,12 +169,7 @@ export default function NovoLancamentoPage() {
           <div className="flex flex-col gap-2">
             {debitos.map((debito, index) => (
               <div key={index} className="flex gap-2 items-center">
-                <select value={debito.contaId} onChange={e => updateDebito(index, 'contaId', e.target.value)} className="flex-1 border rounded px-3 py-2 text-sm">
-                  <option value="">Selecione a conta</option>
-                  {contas.map(c => (
-                    <option key={c.id} value={c.id}>{c.codigo} - {c.nome}</option>
-                  ))}
-                </select>
+                <ContaInput contas={contas} value={debito.contaId} onChange={val => updateDebito(index, 'contaId', val)} />
                 <input type="number" step="0.01" min="0" placeholder="Valor" value={debito.valor} onChange={e => updateDebito(index, 'valor', e.target.value)} className="w-32 border rounded px-3 py-2 text-sm" />
                 {debitos.length > 1 && (
                   <button type="button" onClick={() => removeDebito(index)} className="text-red-500 hover:text-red-700 font-bold text-lg">×</button>
@@ -131,12 +187,7 @@ export default function NovoLancamentoPage() {
           <div className="flex flex-col gap-2">
             {creditos.map((credito, index) => (
               <div key={index} className="flex gap-2 items-center">
-                <select value={credito.contaId} onChange={e => updateCredito(index, 'contaId', e.target.value)} className="flex-1 border rounded px-3 py-2 text-sm">
-                  <option value="">Selecione a conta</option>
-                  {contas.map(c => (
-                    <option key={c.id} value={c.id}>{c.codigo} - {c.nome}</option>
-                  ))}
-                </select>
+                <ContaInput contas={contas} value={credito.contaId} onChange={val => updateCredito(index, 'contaId', val)} />
                 <input type="number" step="0.01" min="0" placeholder="Valor" value={credito.valor} onChange={e => updateCredito(index, 'valor', e.target.value)} className="w-32 border rounded px-3 py-2 text-sm" />
                 {creditos.length > 1 && (
                   <button type="button" onClick={() => removeCredito(index)} className="text-green-500 hover:text-green-700 font-bold text-lg">×</button>
