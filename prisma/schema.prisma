@@ -54,6 +54,7 @@ model Conta {
   codigo      String
   nome        String
   tipo        TipoConta
+  contaBase   Boolean      @default(false)
   empresa     Empresa      @relation(fields: [empresaId], references: [id])
   empresaId   String
   contaPai    Conta?       @relation("ContaFilhas", fields: [contaPaiId], references: [id])
@@ -95,8 +96,8 @@ enum TipoConta {
   PATRIMONIO_LIQUIDO
   RECEITA
   DESPESA
+  RESULTADO
 }
-
 enum TipoLancamento {
   DEBITO
   CREDITO

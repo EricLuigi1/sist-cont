@@ -14,17 +14,14 @@ export async function GET(request, { params }) {
 
   if (!vinculo) return NextResponse.json({ erro: 'Acesso negado!' }, { status: 403 })
 
-  const lotes = await prisma.lote.findMany({
+    const lotes = await prisma.lote.findMany({
     where: { empresaId: id },
-    orderBy: { data: 'desc' },
+    orderBy: { criadoEm: 'desc' },
     include: {
-      lancamentos: {
-        include: { conta: true },
-      },
+      lancamentos: { include: { conta: true } },
       usuario: { select: { nome: true } },
     },
   })
-
   return NextResponse.json(lotes)
 }
 
@@ -68,7 +65,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ erro: `Total de débitos (R$ ${totalDebitos.toFixed(2)}) deve ser igual ao total de créditos (R$ ${totalCreditos.toFixed(2)})!` }, { status: 400 })
   }
 
-  // Cria o lote com os lançamentos
+  // lote com os lançamento
   const lote = await prisma.lote.create({
     data: {
       historico: body.historico,
@@ -112,7 +109,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ erro: 'Você só pode excluir seus próprios lançamentos!' }, { status: 403 })
   }
 
-  // Deleta os lançamentos do lote primeiro, depois o lote
+  // delete lançamento depois o lote
   await prisma.lancamento.deleteMany({ where: { loteId } })
   await prisma.lote.delete({ where: { id: loteId } })
 

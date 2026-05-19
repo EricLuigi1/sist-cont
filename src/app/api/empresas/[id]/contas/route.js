@@ -132,6 +132,10 @@ export async function DELETE(request, { params }) {
     include: { filhas: true, lancamentos: true },
   })
 
+  if (conta.contaBase) {
+    return NextResponse.json({ erro: 'Contas base não podem ser excluídas!' }, { status: 400 })
+  }
+
   if (conta.filhas.length > 0) {
     return NextResponse.json({ erro: 'Não é possível excluir uma conta que possui subcontas!' }, { status: 400 })
   }
