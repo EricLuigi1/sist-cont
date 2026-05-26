@@ -17,8 +17,10 @@ const contasBase = [
   { codigo: '4.1', nome: 'Receitas Operacionais', tipo: 'RECEITA', pai: '4' },
   { codigo: '5', nome: 'Despesa', tipo: 'DESPESA', pai: null },
   { codigo: '5.1', nome: 'Despesas Operacionais', tipo: 'DESPESA', pai: '5' },
-  { codigo: '6', nome: 'Resultado', tipo: 'RESULTADO', pai: null },
-  { codigo: '6.1', nome: 'Apuração do Resultado do Exercício', tipo: 'RESULTADO', pai: '6' },
+  { codigo: '6', nome: 'Custos', tipo: 'CUSTO', pai: null },
+  { codigo: '6.1', nome: 'Custos Operacionais', tipo: 'CUSTO', pai: '6' },
+  { codigo: '7', nome: 'Resultado', tipo: 'RESULTADO', pai: null },
+  { codigo: '7.1', nome: 'Apuração do Resultado do Exercício', tipo: 'RESULTADO', pai: '7' },
 ]
 
 export async function POST(request) {

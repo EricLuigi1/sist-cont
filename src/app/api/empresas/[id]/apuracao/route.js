@@ -25,7 +25,7 @@ export async function POST(request, { params }) {
     where: { empresaId: id },
   })
 
-  const contaApuracao = contas.find(c => c.codigo === '6.1')
+  const contaApuracao = contas.find(c => c.codigo === '7.1')
   const contaLucros = contas.find(c => c.codigo === '3.2')
   const contaPrejuizos = contas.find(c => c.codigo === '3.3')
 

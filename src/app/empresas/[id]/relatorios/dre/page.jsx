@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import BotaoImprimir from '@/components/BotaoImprimir'
 import FiltroPeriodo from '@/components/FiltroPeriodo'
+import { formatarMoeda } from '@/lib/formatacao'
 
 export default async function DREPage({ params, searchParams }) {
   const session = await auth()
@@ -72,12 +73,12 @@ export default async function DREPage({ params, searchParams }) {
           <div className="mb-4">
             <div className="flex justify-between font-semibold text-green-700 bg-green-50 px-3 py-2 rounded">
               <span>RECEITAS</span>
-              <span>R$ {totalReceitas.toFixed(2)}</span>
+              <span>R$ {formatarMoeda(totalReceitas)}</span>
             </div>
             {receitasPorConta.map(({ conta, total }) => (
               <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
                 <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                <span className="text-green-600">R$ {total.toFixed(2)}</span>
+                <span className="text-green-600">R$ {formatarMoeda(total)}</span>
               </div>
             ))}
             {receitasPorConta.length === 0 && (
@@ -87,12 +88,12 @@ export default async function DREPage({ params, searchParams }) {
           <div className="mb-4">
             <div className="flex justify-between font-semibold text-red-700 bg-red-50 px-3 py-2 rounded">
               <span>DESPESAS</span>
-              <span>R$ {totalDespesas.toFixed(2)}</span>
+              <span>R$ {formatarMoeda(totalDespesas)}</span>
             </div>
             {despesasPorConta.map(({ conta, total }) => (
               <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
                 <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                <span className="text-red-600">R$ {total.toFixed(2)}</span>
+                <span className="text-red-600">R$ {formatarMoeda(total)}</span>
               </div>
             ))}
             {despesasPorConta.length === 0 && (
@@ -101,7 +102,7 @@ export default async function DREPage({ params, searchParams }) {
           </div>
           <div className={`flex justify-between font-bold text-lg px-3 py-3 rounded ${resultado >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
             <span>{resultado >= 0 ? 'LUCRO DO PERÍODO' : 'PREJUÍZO DO PERÍODO'}</span>
-            <span>R$ {Math.abs(resultado).toFixed(2)}</span>
+            <span>R$ {formatarMoeda(Math.abs(resultado))}</span>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import BotaoImprimir from '@/components/BotaoImprimir'
 import FiltroPeriodo from '@/components/FiltroPeriodo'
+import { formatarMoeda } from '@/lib/formatacao'
 
 export default async function FluxoCaixaPage({ params, searchParams }) {
   const session = await auth()
@@ -85,10 +86,10 @@ export default async function FluxoCaixaPage({ params, searchParams }) {
                   <tr key={lote.id} className="border-t text-sm hover:bg-gray-50">
                     <td className="p-3 text-gray-500">{new Date(lote.data).toLocaleDateString('pt-BR')}</td>
                     <td className="p-3">{lote.historico}</td>
-                    <td className="p-3 text-right text-green-600">{entradas > 0 ? `R$ ${entradas.toFixed(2)}` : '-'}</td>
-                    <td className="p-3 text-right text-red-600">{saidas > 0 ? `R$ ${saidas.toFixed(2)}` : '-'}</td>
+                    <td className="p-3 text-right text-green-600">{entradas > 0 ? `R$ ${formatarMoeda(entradas)}` : '-'}</td>
+                    <td className="p-3 text-right text-red-600">{saidas > 0 ? `R$ ${formatarMoeda(saidas)}` : '-'}</td>
                     <td className={`p-3 text-right font-medium ${saldoAcumulado >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      R$ {saldoAcumulado.toFixed(2)}
+                      R$ {formatarMoeda(saldoAcumulado)}
                     </td>
                   </tr>
                 )
@@ -99,7 +100,7 @@ export default async function FluxoCaixaPage({ params, searchParams }) {
             <tfoot>
               <tr className={`font-bold text-sm border-t ${saldoAcumulado >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                 <td colSpan={4} className="p-3">SALDO FINAL DO PERÍODO</td>
-                <td className="p-3 text-right">R$ {saldoAcumulado.toFixed(2)}</td>
+                <td className="p-3 text-right">R$ {formatarMoeda(saldoAcumulado)}</td>
               </tr>
             </tfoot>
           )}

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { formatarMoeda } from '@/lib/formatacao'
+import ModalEstorno from '@/components/ModalEstorno'
 
 export default function LancamentosPage() {
   const pathname = usePathname()
@@ -9,8 +11,10 @@ export default function LancamentosPage() {
   const [lotes, setLotes] = useState([])
   const [busca, setBusca] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [usuarioId, setUsuarioId] = useState(null)
   const [erro, setErro] = useState('')
   const [loteAberto, setLoteAberto] = useState(null)
+  const [modalEstorno, setModalEstorno] = useState(null)
 
   function carregarLotes() {
     fetch(`/api/empresas/${id}/lancamentos`)
@@ -22,23 +26,11 @@ export default function LancamentosPage() {
     carregarLotes()
     fetch(`/api/empresas/${id}`)
       .then(res => res.json())
-      .then(data => setIsAdmin(data.papel === 'ADMIN'))
+      .then(data => {
+        setIsAdmin(data.papel === 'ADMIN')
+        setUsuarioId(data.usuarioId)
+      })
   }, [id])
-
-  async function handleExcluir(loteId) {
-    if (!confirm('Tem certeza que deseja excluir este lançamento?')) return
-
-    const res = await fetch(`/api/empresas/${id}/lancamentos?loteId=${loteId}`, {
-      method: 'DELETE',
-    })
-
-    if (res.ok) {
-      carregarLotes()
-    } else {
-      const data = await res.json()
-      setErro(data.erro || 'Erro ao excluir!')
-    }
-  }
 
   const lotesFiltrados = lotes.filter(l =>
     l.historico.toLowerCase().includes(busca.toLowerCase())
@@ -46,6 +38,17 @@ export default function LancamentosPage() {
 
   return (
     <div>
+      {modalEstorno && (
+        <ModalEstorno
+          loteId={modalEstorno.id}
+          historico={modalEstorno.historico}
+          onSuccess={() => {
+            setModalEstorno(null)
+            carregarLotes()
+          }}
+          onClose={() => setModalEstorno(null)}
+        />
+      )}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Lançamentos</h1>
         <a href={`/empresas/${id}/lancamentos/novo`} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -67,17 +70,19 @@ export default function LancamentosPage() {
           lotesFiltrados.map(lote => {
             const totalDebitos = lote.lancamentos.filter(l => l.tipo === 'DEBITO').reduce((acc, l) => acc + Number(l.valor), 0)
             const totalCreditos = lote.lancamentos.filter(l => l.tipo === 'CREDITO').reduce((acc, l) => acc + Number(l.valor), 0)
+            const isEstorno = lote.historico.startsWith('Estorno')
 
             return (
-              <div key={lote.id} className="border rounded-lg overflow-hidden">
+              <div key={lote.id} className={`border rounded-lg overflow-hidden ${isEstorno ? 'border-orange-200' : ''}`}>
                 <div className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onClick={() => setLoteAberto(loteAberto === lote.id ? null : lote.id)}>
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-gray-500">{new Date(lote.data).toLocaleDateString('pt-BR')}</span>
-                    <span className="font-medium">{lote.historico}</span>
+                    <span className={`font-medium ${isEstorno ? 'text-orange-600' : ''}`}>{lote.historico}</span>
                     <span className="text-xs text-gray-400">por {lote.usuario.nome}</span>
+                    {isEstorno && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded">Estorno</span>}
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-green-600">R$ {totalCreditos.toFixed(2)}</span>
+                    <span className="text-sm font-medium text-green-600">R$ {formatarMoeda(totalCreditos)}</span>
                     <span className="text-xs text-gray-400">{loteAberto === lote.id ? '▲' : '▼'}</span>
                   </div>
                 </div>
@@ -99,7 +104,7 @@ export default function LancamentosPage() {
                               {l.tipo === 'CREDITO' ? 'Crédito' : 'Débito'}
                             </td>
                             <td className={`py-2 font-medium ${l.tipo === 'CREDITO' ? 'text-green-600' : 'text-red-600'}`}>
-                              {l.tipo === 'CREDITO' ? '+' : '-'}R$ {Number(l.valor).toFixed(2)}
+                              {l.tipo === 'CREDITO' ? '+' : '-'}R$ {formatarMoeda(l.valor)}
                             </td>
                           </tr>
                         ))}
@@ -107,12 +112,17 @@ export default function LancamentosPage() {
                     </table>
                     <div className="flex justify-between items-center mt-3 pt-3 border-t">
                       <div className="flex gap-4 text-sm">
-                        <span className="text-red-600">Total Débitos: R$ {totalDebitos.toFixed(2)}</span>
-                        <span className="text-green-600">Total Créditos: R$ {totalCreditos.toFixed(2)}</span>
+                        <span className="text-red-600">Total Débitos: R$ {formatarMoeda(totalDebitos)}</span>
+                        <span className="text-green-600">Total Créditos: R$ {formatarMoeda(totalCreditos)}</span>
                       </div>
-                      <button onClick={() => handleExcluir(lote.id)} className="text-sm text-red-500 hover:underline">
-                        Excluir lançamento
-                      </button>
+                      {!isEstorno && !lotes.some(l => l.historico.startsWith('Estorno') && l.historico.includes(lote.historico)) && (
+                        <button
+                          onClick={() => setModalEstorno(lote)}
+                          className="text-sm text-orange-500 hover:underline"
+                        >
+                          Estornar
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

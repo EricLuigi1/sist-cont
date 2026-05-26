@@ -14,6 +14,7 @@ export default function NovaContaPage() {
     nome: '',
     tipo: 'ATIVO',
     contaPaiId: '',
+    analitica: false,
   })
 
   useEffect(() => {
@@ -23,13 +24,18 @@ export default function NovaContaPage() {
   }, [id])
 
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+    setForm({ ...form, [e.target.name]: value })
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setLoading(true)
     setErro('')
+
+    if (!form.nome.trim()) return setErro('Nome é obrigatório!')
+    if (form.nome.trim().length < 3) return setErro('Nome deve ter pelo menos 3 caracteres!')
+
+    setLoading(true)
 
     const res = await fetch(`/api/empresas/${id}/contas`, {
       method: 'POST',
@@ -38,6 +44,7 @@ export default function NovaContaPage() {
         nome: form.nome,
         tipo: form.tipo,
         contaPaiId: form.contaPaiId || null,
+        analitica: form.analitica,
       }),
     })
 
@@ -56,6 +63,8 @@ export default function NovaContaPage() {
     PATRIMONIO_LIQUIDO: 'Patrimônio Líquido',
     RECEITA: 'Receita',
     DESPESA: 'Despesa',
+    CUSTO: 'Custo',
+    RESULTADO: 'Resultado',
   }
 
   const contasFiltradas = contas.filter(c => c.tipo === form.tipo)
@@ -86,6 +95,13 @@ export default function NovaContaPage() {
             ))}
           </select>
           <p className="text-xs text-gray-400 mt-1">O código será gerado automaticamente.</p>
+        </div>
+        <div className="flex items-center gap-3 border rounded px-3 py-3">
+          <input type="checkbox" id="analitica" name="analitica" checked={form.analitica} onChange={handleChange} className="w-4 h-4" />
+          <div>
+            <label htmlFor="analitica" className="text-sm font-medium cursor-pointer">Conta Analítica</label>
+            <p className="text-xs text-gray-400">Marque se essa conta terá movimentação de saldo</p>
+          </div>
         </div>
         <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
           {loading ? 'Salvando...' : 'Cadastrar Conta'}

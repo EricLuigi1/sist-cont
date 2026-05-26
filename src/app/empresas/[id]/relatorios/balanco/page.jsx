@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import BotaoImprimir from '@/components/BotaoImprimir'
 import FiltroPeriodo from '@/components/FiltroPeriodo'
+import { formatarMoeda } from '@/lib/formatacao'
 
 export default async function BalancoPage({ params, searchParams }) {
   const session = await auth()
@@ -57,8 +58,8 @@ export default async function BalancoPage({ params, searchParams }) {
   const passivosPorConta = agruparPorConta('PASSIVO', 'CREDITO')
   const plPorConta = agruparPorConta('PATRIMONIO_LIQUIDO', 'CREDITO')
 
- const fmt = d => new Date(d.getTime() + d.getTimezoneOffset() * -60000).toLocaleDateString('pt-BR')
- const periodoLabel = `${fmt(inicioData)} até ${fmt(fimData)}`
+  const fmt = d => new Date(d.getTime() + d.getTimezoneOffset() * -60000).toLocaleDateString('pt-BR')
+  const periodoLabel = `${fmt(inicioData)} até ${fmt(fimData)}`
 
   return (
     <div className="max-w-2xl">
@@ -79,12 +80,12 @@ export default async function BalancoPage({ params, searchParams }) {
           <div className="p-4">
             <div className="flex justify-between font-semibold text-blue-700 bg-blue-50 px-3 py-2 rounded mb-2">
               <span>ATIVO</span>
-              <span>R$ {totalAtivo.toFixed(2)}</span>
+              <span>R$ {formatarMoeda(totalAtivo)}</span>
             </div>
             {ativosPorConta.map(({ conta, total }) => (
               <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
                 <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                <span>R$ {total.toFixed(2)}</span>
+                <span>R$ {formatarMoeda(total)}</span>
               </div>
             ))}
             {ativosPorConta.length === 0 && (
@@ -94,12 +95,12 @@ export default async function BalancoPage({ params, searchParams }) {
           <div className="p-4">
             <div className="flex justify-between font-semibold text-red-700 bg-red-50 px-3 py-2 rounded mb-2">
               <span>PASSIVO</span>
-              <span>R$ {totalPassivo.toFixed(2)}</span>
+              <span>R$ {formatarMoeda(totalPassivo)}</span>
             </div>
             {passivosPorConta.map(({ conta, total }) => (
               <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
                 <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                <span>R$ {total.toFixed(2)}</span>
+                <span>R$ {formatarMoeda(total)}</span>
               </div>
             ))}
             {passivosPorConta.length === 0 && (
@@ -107,12 +108,12 @@ export default async function BalancoPage({ params, searchParams }) {
             )}
             <div className="flex justify-between font-semibold text-purple-700 bg-purple-50 px-3 py-2 rounded mb-2 mt-4">
               <span>PATRIMÔNIO LÍQUIDO</span>
-              <span>R$ {totalPL.toFixed(2)}</span>
+              <span>R$ {formatarMoeda(totalPL)}</span>
             </div>
             {plPorConta.map(({ conta, total }) => (
               <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
                 <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                <span>R$ {total.toFixed(2)}</span>
+                <span>R$ {formatarMoeda(total)}</span>
               </div>
             ))}
             {plPorConta.length === 0 && (
@@ -123,11 +124,11 @@ export default async function BalancoPage({ params, searchParams }) {
         <div className="grid grid-cols-2 divide-x border-t">
           <div className={`flex justify-between font-bold px-7 py-3 ${totalAtivo === totalPassivoMaisPL ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
             <span>TOTAL ATIVO</span>
-            <span>R$ {totalAtivo.toFixed(2)}</span>
+            <span>R$ {formatarMoeda(totalAtivo)}</span>
           </div>
           <div className={`flex justify-between font-bold px-7 py-3 ${totalAtivo === totalPassivoMaisPL ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
             <span>TOTAL P + PL</span>
-            <span>R$ {totalPassivoMaisPL.toFixed(2)}</span>
+            <span>R$ {formatarMoeda(totalPassivoMaisPL)}</span>
           </div>
         </div>
       </div>

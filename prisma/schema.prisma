@@ -54,6 +54,7 @@ model Conta {
   codigo      String
   nome        String
   tipo        TipoConta
+  analitica   Boolean      @default(false)
   contaBase   Boolean      @default(false)
   empresa     Empresa      @relation(fields: [empresaId], references: [id])
   empresaId   String
@@ -96,8 +97,10 @@ enum TipoConta {
   PATRIMONIO_LIQUIDO
   RECEITA
   DESPESA
+  CUSTO
   RESULTADO
 }
+
 enum TipoLancamento {
   DEBITO
   CREDITO
