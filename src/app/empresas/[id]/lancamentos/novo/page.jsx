@@ -18,9 +18,7 @@ function ContaInput({ contas, value, onChange }) {
   }, [])
 
   useEffect(() => {
-    if (!value) {
-      setBusca('')
-    }
+    if (!value) setBusca('')
   }, [value])
 
   const sugestoes = busca.length === 0 ? [] : contas.filter(c =>
@@ -35,7 +33,7 @@ function ContaInput({ contas, value, onChange }) {
   }
 
   return (
-    <div className="relative flex-1" ref={ref}>
+    <div className="relative flex-1" ref={ref} style={{ zIndex: aberto ? 50 : 'auto' }}>
       <input
         type="text"
         placeholder="Digite o código ou nome da conta..."
@@ -45,13 +43,22 @@ function ContaInput({ contas, value, onChange }) {
           setAberto(true)
           if (!e.target.value) onChange('')
         }}
-        onFocus={() => setAberto(true)}
+        onFocus={() => busca.length > 0 && setAberto(true)}
         className="w-full border rounded px-3 py-2 text-sm"
       />
       {aberto && sugestoes.length > 0 && (
-        <div className="absolute z-20 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+        <div
+          className="absolute left-0 right-0 bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto"
+          style={{ zIndex: 9999, top: '100%' }}
+        >
           {sugestoes.map(c => (
-            <button key={c.id} type="button" onClick={() => selecionar(c)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex gap-2">
+            <button
+              key={c.id}
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => selecionar(c)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex gap-2"
+            >
               <span className="font-mono text-gray-500 w-16 shrink-0">{c.codigo}</span>
               <span>{c.nome}</span>
             </button>

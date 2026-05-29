@@ -97,6 +97,7 @@ export default function EmpresaLayout({ children }) {
             )}
             <a href={`/empresas/${id}/lancamentos`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Lançamentos</a>
             <a href={`/empresas/${id}/contas`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Plano de Contas</a>
+            <a href={`/empresas/${id}/colaboradores`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Colaboradores</a>
           </nav>
           <div className="mt-auto">
             <a href="/dashboard" className="text-sm text-gray-500 hover:text-blue-600">← Voltar</a>
