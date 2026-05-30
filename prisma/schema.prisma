@@ -15,6 +15,7 @@ model Usuario {
   senha       String
   cpf         String           @unique
   telefone    String
+  foto        String?
   criadoEm   DateTime         @default(now())
   empresas    EmpresaUsuario[]
   lotes       Lote[]

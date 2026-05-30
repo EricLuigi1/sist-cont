@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 export default function EmpresaLayout({ children }) {
   const [relatoriosAberto, setRelatoriosAberto] = useState(false)
   const [empresa, setEmpresa] = useState(null)
+  const [usuario, setUsuario] = useState(null)
   const [copiado, setCopiado] = useState(false)
   const [perfilAberto, setPerfilAberto] = useState(false)
   const [codigoAberto, setCodigoAberto] = useState(false)
@@ -20,6 +21,9 @@ export default function EmpresaLayout({ children }) {
         .then(res => res.json())
         .then(data => setEmpresa(data))
     }
+    fetch('/api/perfil')
+      .then(res => res.json())
+      .then(data => setUsuario(data))
   }, [id])
 
   useEffect(() => {
@@ -62,13 +66,20 @@ export default function EmpresaLayout({ children }) {
             </div>
           )}
           <div className="relative" ref={perfilRef}>
-            <button onClick={() => setPerfilAberto(!perfilAberto)} className="flex items-center gap-2 text-sm font-medium hover:text-blue-600">
-              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">U</div>
-              Meu Perfil
+            <button onClick={() => setPerfilAberto(!perfilAberto)} className="flex items-center gap-2 hover:opacity-80">
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs overflow-hidden">
+                {usuario?.foto ? (
+                  <img src={usuario.foto} alt="Foto" className="w-full h-full object-cover" />
+                ) : (
+                  usuario?.nome?.[0]?.toUpperCase() ?? 'U'
+                )}
+              </div>
+              <span className="text-sm font-medium">{usuario?.nome?.split(' ')[0] ?? 'Perfil'}</span>
             </button>
             {perfilAberto && (
-              <div className="absolute right-0 mt-2 w-40 border rounded-lg shadow bg-white flex flex-col z-10">
-                <a href="/perfil" className="px-4 py-2 text-sm hover:bg-gray-50">Alterar senha</a>
+              <div className="absolute right-0 mt-2 w-44 border rounded-lg shadow bg-white flex flex-col z-10">
+                <a href="/perfil" className="px-4 py-2 text-sm hover:bg-gray-50">Meu Perfil</a>
+                <a href="/perfil?aba=senha" className="px-4 py-2 text-sm hover:bg-gray-50">Alterar Senha</a>
                 <a href="/api/auth/signout" className="px-4 py-2 text-sm text-red-500 hover:bg-gray-50">Sair</a>
               </div>
             )}
@@ -90,9 +101,9 @@ export default function EmpresaLayout({ children }) {
             </button>
             {relatoriosAberto && (
               <div className="flex flex-col gap-1 ml-3">
-                <a href={`/empresas/${id}/relatorios/dre`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">DRE</a>
-                <a href={`/empresas/${id}/relatorios/balanco`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Balanço Patrimonial</a>
-                <a href={`/empresas/${id}/relatorios/fluxo`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Fluxo de Caixa</a>
+                <a href={`/empresas/${id}/relatorios/dre`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">|- DRE</a>
+                <a href={`/empresas/${id}/relatorios/balanco`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">|- Balanço Patrimonial</a>
+                <a href={`/empresas/${id}/relatorios/fluxo`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">|- Fluxo de Caixa</a>
               </div>
             )}
             <a href={`/empresas/${id}/lancamentos`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Lançamentos</a>
