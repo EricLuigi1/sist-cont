@@ -3,6 +3,26 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
+const naturezasDRE = {
+  RECEITA: [
+    { value: 'RECEITA_BRUTA', label: 'Receita Operacional Bruta' },
+    { value: 'RECEITA_FINANCEIRA', label: 'Receita Financeira' },
+    { value: 'RECEITA_OPERACIONAL_OUTRAS', label: 'Outras Receitas Operacionais' },
+    { value: 'OUTRAS_RECEITAS', label: 'Outras Receitas' },
+    { value: 'DEDUCAO', label: 'Dedução/Abatimento' },
+  ],
+  DESPESA: [
+    { value: 'DESPESA_VENDAS', label: 'Despesa com Vendas' },
+    { value: 'DESPESA_FINANCEIRA', label: 'Despesa Financeira' },
+    { value: 'DESPESA_ADMINISTRATIVA', label: 'Despesa Geral e Administrativa' },
+    { value: 'DESPESA_OUTRAS', label: 'Outras Despesas Operacionais' },
+    { value: 'OUTRAS_DESPESAS', label: 'Outras Despesas' },
+  ],
+  CUSTO: [
+    { value: 'CUSTO_OPERACIONAL', label: 'Custo Operacional' },
+  ],
+}
+
 export default function NovaContaPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -15,6 +35,7 @@ export default function NovaContaPage() {
     tipo: 'ATIVO',
     contaPaiId: '',
     analitica: false,
+    naturezaDRE: '',
   })
 
   useEffect(() => {
@@ -25,7 +46,9 @@ export default function NovaContaPage() {
 
   function handleChange(e) {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
-    setForm({ ...form, [e.target.name]: value })
+    const updated = { ...form, [e.target.name]: value }
+    if (e.target.name === 'tipo') updated.naturezaDRE = ''
+    setForm(updated)
   }
 
   async function handleSubmit(e) {
@@ -34,6 +57,9 @@ export default function NovaContaPage() {
 
     if (!form.nome.trim()) return setErro('Nome é obrigatório!')
     if (form.nome.trim().length < 3) return setErro('Nome deve ter pelo menos 3 caracteres!')
+    if (form.analitica && ['RECEITA', 'DESPESA', 'CUSTO'].includes(form.tipo) && !form.naturezaDRE) {
+      return setErro('Selecione a natureza DRE para contas analíticas de receita, despesa ou custo!')
+    }
 
     setLoading(true)
 
@@ -45,6 +71,7 @@ export default function NovaContaPage() {
         tipo: form.tipo,
         contaPaiId: form.contaPaiId || null,
         analitica: form.analitica,
+        naturezaDRE: form.naturezaDRE || null,
       }),
     })
 
@@ -68,6 +95,7 @@ export default function NovaContaPage() {
   }
 
   const contasFiltradas = contas.filter(c => c.tipo === form.tipo)
+  const naturezasDisponiveis = naturezasDRE[form.tipo] || []
 
   return (
     <div className="max-w-xl">
@@ -103,6 +131,18 @@ export default function NovaContaPage() {
             <p className="text-xs text-gray-400">Marque se essa conta terá movimentação de saldo</p>
           </div>
         </div>
+        {form.analitica && naturezasDisponiveis.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Natureza no DRE</label>
+            <select name="naturezaDRE" value={form.naturezaDRE} onChange={handleChange} className="w-full border rounded px-3 py-2">
+              <option value="">Selecione...</option>
+              {naturezasDisponiveis.map(n => (
+                <option key={n.value} value={n.value}>{n.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Define onde essa conta aparece no DRE.</p>
+          </div>
+        )}
         <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
           {loading ? 'Salvando...' : 'Cadastrar Conta'}
         </button>

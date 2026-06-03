@@ -57,12 +57,27 @@ model Conta {
   tipo        TipoConta
   analitica   Boolean      @default(false)
   contaBase   Boolean      @default(false)
+  naturezaDRE NaturezaDRE?
   empresa     Empresa      @relation(fields: [empresaId], references: [id])
   empresaId   String
   contaPai    Conta?       @relation("ContaFilhas", fields: [contaPaiId], references: [id])
   contaPaiId  String?
   filhas      Conta[]      @relation("ContaFilhas")
   lancamentos Lancamento[]
+}
+
+enum NaturezaDRE {
+  RECEITA_BRUTA
+  DEDUCAO
+  CUSTO_OPERACIONAL
+  DESPESA_VENDAS
+  DESPESA_FINANCEIRA
+  RECEITA_FINANCEIRA
+  DESPESA_ADMINISTRATIVA
+  DESPESA_OUTRAS
+  RECEITA_OPERACIONAL_OUTRAS
+  OUTRAS_RECEITAS
+  OUTRAS_DESPESAS
 }
 
 model Lote {

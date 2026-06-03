@@ -18,6 +18,18 @@ export default async function FluxoCaixaPage({ params, searchParams }) {
 
   if (!vinculo) redirect('/dashboard')
 
+  const empresa = await prisma.empresa.findUnique({
+    where: { id },
+    select: { nome: true, razaoSocial: true, cnpj: true },
+  })
+
+  const usuarioLogado = await prisma.usuario.findUnique({
+    where: { id: session.user.id },
+    select: { nome: true },
+  })
+
+  const dataGeracao = new Date().toLocaleDateString('pt-BR')
+
   const hoje = new Date()
   const inicioData = inicio ? new Date(inicio + 'T12:00:00') : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
   const fimData = fim ? new Date(fim + 'T12:00:00') : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
@@ -38,17 +50,30 @@ export default async function FluxoCaixaPage({ params, searchParams }) {
   const fmt = d => new Date(d.getTime() + d.getTimezoneOffset() * -60000).toLocaleDateString('pt-BR')
   const periodoLabel = `${fmt(inicioData)} até ${fmt(fimData)}`
 
+  function CabecalhoPDF() {
+    return (
+      <div className="cabecalho-pdf mb-6 border-b pb-4 p-4">
+        <h2 className="text-xl font-bold">{empresa.razaoSocial}</h2>
+        <p className="text-sm text-gray-600">CNPJ: {empresa.cnpj}</p>
+        <p className="text-xs text-gray-400 mt-2">Gerado por: {usuarioLogado.nome} — {dataGeracao}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-2xl">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 no-print">
         <div>
           <h1 className="text-2xl font-bold">Fluxo de Caixa</h1>
           <p className="text-gray-500 text-sm">Movimentações do período</p>
         </div>
         <BotaoImprimir />
       </div>
-      <FiltroPeriodo />
-      <div className="border rounded-lg overflow-hidden">
+      <div className="no-print">
+        <FiltroPeriodo />
+      </div>
+      <div id="relatorio-print" className="border rounded-lg overflow-hidden">
+        <CabecalhoPDF />
         <div className="bg-gray-800 text-white p-4">
           <h2 className="font-bold text-center">FLUXO DE CAIXA</h2>
           <p className="text-center text-gray-400 text-sm">{periodoLabel}</p>

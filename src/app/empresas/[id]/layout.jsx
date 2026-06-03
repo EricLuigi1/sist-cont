@@ -101,14 +101,15 @@ export default function EmpresaLayout({ children }) {
             </button>
             {relatoriosAberto && (
               <div className="flex flex-col gap-1 ml-3">
-                <a href={`/empresas/${id}/relatorios/dre`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">|- DRE</a>
-                <a href={`/empresas/${id}/relatorios/balanco`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">|- Balanço Patrimonial</a>
-                <a href={`/empresas/${id}/relatorios/fluxo`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">|- Fluxo de Caixa</a>
+                <a href={`/empresas/${id}/relatorios/dre`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">DRE</a>
+                <a href={`/empresas/${id}/relatorios/balanco`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Balanço Patrimonial</a>
+                <a href={`/empresas/${id}/relatorios/fluxo`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Fluxo de Caixa</a>
               </div>
             )}
             <a href={`/empresas/${id}/lancamentos`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Lançamentos</a>
             <a href={`/empresas/${id}/contas`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Plano de Contas</a>
             <a href={`/empresas/${id}/colaboradores`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Colaboradores</a>
+            <a href={`/empresas/${id}/info`} className="text-sm px-3 py-2 rounded hover:bg-gray-200">Informações</a>
           </nav>
           <div className="mt-auto">
             <a href="/dashboard" className="text-sm text-gray-500 hover:text-blue-600">← Voltar</a>

@@ -75,12 +75,13 @@ export async function POST(request, { params }) {
     return NextResponse.json({ erro: 'Conta pai não encontrada!' }, { status: 400 })
   }
 
-    const conta = await prisma.conta.create({
+      const conta = await prisma.conta.create({
     data: {
       codigo,
       nome: body.nome,
       tipo: body.tipo,
       analitica: body.analitica || false,
+      naturezaDRE: body.naturezaDRE || null,
       empresaId: id,
       contaPaiId: body.contaPaiId || null,
     },
