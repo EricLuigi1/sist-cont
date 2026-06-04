@@ -4,6 +4,17 @@ import { redirect } from 'next/navigation'
 import BotaoImprimir from '@/components/BotaoImprimir'
 import FiltroPeriodo from '@/components/FiltroPeriodo'
 import { formatarMoeda } from '@/lib/formatacao'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Alert } from '@/components/ui/alert'
+import {
+  ReportDocument,
+  ReportDocumentHeader,
+  ReportLineDetail,
+  ReportLineGroup,
+  ReportLineResult,
+  ReportPdfHeader,
+  ReportSectionLabel,
+} from '@/components/financial/ReportDocument'
 
 export default async function DREPage({ params, searchParams }) {
   const session = await auth()
@@ -15,6 +26,8 @@ export default async function DREPage({ params, searchParams }) {
   const vinculo = await prisma.empresaUsuario.findUnique({
     where: { usuarioId_empresaId: { usuarioId: session.user.id, empresaId: id } },
   })
+
+  if (!vinculo) redirect('/dashboard')
 
   const empresa = await prisma.empresa.findUnique({
     where: { id },
@@ -28,11 +41,13 @@ export default async function DREPage({ params, searchParams }) {
 
   const dataGeracao = new Date().toLocaleDateString('pt-BR')
 
-  if (!vinculo) redirect('/dashboard')
-
   const hoje = new Date()
-  const inicioData = inicio ? new Date(inicio + 'T12:00:00') : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
-  const fimData = fim ? new Date(fim + 'T12:00:00') : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
+  const inicioData = inicio
+    ? new Date(`${inicio}T12:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
+  const fimData = fim
+    ? new Date(`${fim}T12:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
 
   const lancamentos = await prisma.lancamento.findMany({
     where: {
@@ -50,127 +65,240 @@ export default async function DREPage({ params, searchParams }) {
 
   function contasPorNatureza(natureza, tipo) {
     const grupos = {}
+
     lancamentos
       .filter(l => l.conta.naturezaDRE === natureza && l.tipo === tipo)
       .forEach(l => {
         if (!grupos[l.contaId]) grupos[l.contaId] = { conta: l.conta, total: 0 }
         grupos[l.contaId].total += Number(l.valor)
       })
+
     return Object.values(grupos).sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
   }
 
   const receitaBruta = somarPorNatureza('RECEITA_BRUTA', 'CREDITO')
   const deducoes = somarPorNatureza('DEDUCAO', 'DEBITO')
   const receitaLiquida = receitaBruta - deducoes
+
   const custosOperacionais = somarPorNatureza('CUSTO_OPERACIONAL', 'DEBITO')
   const lucroBruto = receitaLiquida - custosOperacionais
+
   const despesasVendas = somarPorNatureza('DESPESA_VENDAS', 'DEBITO')
   const despesasFinanceiras = somarPorNatureza('DESPESA_FINANCEIRA', 'DEBITO')
   const receitasFinanceiras = somarPorNatureza('RECEITA_FINANCEIRA', 'CREDITO')
   const despesasAdministrativas = somarPorNatureza('DESPESA_ADMINISTRATIVA', 'DEBITO')
   const despesasOutras = somarPorNatureza('DESPESA_OUTRAS', 'DEBITO')
-  const totalDespesasOperacionais = despesasVendas + despesasFinanceiras - receitasFinanceiras + despesasAdministrativas + despesasOutras
+
+  const totalDespesasOperacionais =
+    despesasVendas +
+    despesasFinanceiras -
+    receitasFinanceiras +
+    despesasAdministrativas +
+    despesasOutras
+
   const outrasReceitasOperacionais = somarPorNatureza('RECEITA_OPERACIONAL_OUTRAS', 'CREDITO')
   const lucroOperacional = lucroBruto - totalDespesasOperacionais + outrasReceitasOperacionais
+
   const outrasReceitas = somarPorNatureza('OUTRAS_RECEITAS', 'CREDITO')
   const outrasDespesas = somarPorNatureza('OUTRAS_DESPESAS', 'DEBITO')
   const resultadoFinal = lucroOperacional + outrasReceitas - outrasDespesas
 
+  const lancamentosSemNaturezaDRE = lancamentos.filter(l => {
+    return (
+      ['RECEITA', 'DESPESA', 'CUSTO'].includes(l.conta.tipo) &&
+      !l.conta.naturezaDRE
+    )
+  })
+
+  const contasSemNaturezaDRE = [
+    ...new Map(
+      lancamentosSemNaturezaDRE.map(l => [
+        l.contaId,
+        {
+          id: l.contaId,
+          codigo: l.conta.codigo,
+          nome: l.conta.nome,
+          tipo: l.conta.tipo,
+        },
+      ])
+    ).values(),
+  ].sort((a, b) => a.codigo.localeCompare(b.codigo))
+
   const fmt = d => new Date(d.getTime() + d.getTimezoneOffset() * -60000).toLocaleDateString('pt-BR')
   const periodoLabel = `${fmt(inicioData)} até ${fmt(fimData)}`
+  const fmtValor = v => `R$ ${formatarMoeda(v)}`
 
-  function LinhaGrupo({ numero, titulo, valor }) {
-    const cor = valor >= 0 ? 'text-green-700' : 'text-red-700'
-    const bg = valor >= 0 ? 'bg-green-50' : 'bg-red-50'
-    return (
-      <div className={`flex justify-between font-semibold px-3 py-2 rounded mt-2 ${bg}`}>
-        <span>{numero} - {titulo}</span>
-        <span className={cor}>R$ {formatarMoeda(Math.abs(valor))}</span>
-      </div>
-    )
-  }
-
-  function LinhaContas({ natureza, tipo }) {
+  function LinhaContas({ natureza, tipo, multiplicador = 1 }) {
     const contas = contasPorNatureza(natureza, tipo)
+
     if (contas.length === 0) return null
+
     return contas.map(({ conta, total }) => (
-      <div key={conta.id} className="flex justify-between text-sm px-6 py-1 border-b text-gray-600">
-        <span>{conta.codigo} - {conta.nome}</span>
-        <span>R$ {formatarMoeda(total)}</span>
-      </div>
+      <ReportLineDetail
+        key={conta.id}
+        codigo={conta.codigo}
+        nome={conta.nome}
+        valor={total * multiplicador}
+        formatValue={fmtValor}
+      />
     ))
   }
 
-  function LinhaResultado({ numero, titulo, valor }) {
-    const positivo = valor >= 0
-    return (
-      <div className={`flex justify-between font-bold px-3 py-3 rounded mt-3 ${positivo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-        <span>{numero} - {titulo}</span>
-        <span>R$ {formatarMoeda(Math.abs(valor))}{!positivo ? ' (Prejuízo)' : ''}</span>
-      </div>
-    )
-  }
-
-  function CabecalhoPDF() {
-    return (
-      <div className="cabecalho-pdf mb-6 border-b pb-4 p-4">
-        <h2 className="text-xl font-bold">{empresa.razaoSocial}</h2>
-        <p className="text-sm text-gray-600">CNPJ: {empresa.cnpj}</p>
-        <p className="text-xs text-gray-400 mt-2">Gerado por: {usuarioLogado.nome} — {dataGeracao}</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="max-w-2xl">
-      <div className="flex justify-between items-center mb-4 no-print">
-        <div>
-          <h1 className="text-2xl font-bold">DRE</h1>
-          <p className="text-gray-500 text-sm">Demonstração do Resultado do Exercício</p>
+    <>
+      <div className="space-y-4">
+        <PageHeader
+          title="DRE"
+          description="Demonstração do Resultado do Exercício"
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+          <FiltroPeriodo />
+          <BotaoImprimir />
         </div>
-        <BotaoImprimir />
+
+        {lancamentosSemNaturezaDRE.length > 0 && (
+          <Alert variant="destructive" className="print:hidden">
+            Existem {lancamentosSemNaturezaDRE.length} lançamento(s) em contas de receita,
+            despesa ou custo sem natureza DRE. Esses valores não foram considerados na DRE.
+            {contasSemNaturezaDRE.length > 0 && (
+              <span className="mt-2 block text-xs">
+                Contas: {contasSemNaturezaDRE.map(conta => `${conta.codigo} - ${conta.nome}`).join('; ')}
+              </span>
+            )}
+          </Alert>
+        )}
       </div>
-      <div className="no-print">
-        <FiltroPeriodo />
-      </div>
-      <div id="relatorio-print" className="border rounded-lg overflow-hidden">
-        <CabecalhoPDF />
-        <div className="bg-gray-800 text-white p-4">
-          <h2 className="font-bold text-center">DEMONSTRAÇÃO DO RESULTADO DO EXERCÍCIO</h2>
-          <p className="text-center text-gray-400 text-sm">{periodoLabel}</p>
-        </div>
-        <div className="p-4 flex flex-col gap-1">
-          <LinhaGrupo numero="1" titulo="Receita Operacional Bruta" valor={receitaBruta} />
+
+      <ReportDocument>
+        <ReportPdfHeader
+          razaoSocial={empresa?.razaoSocial ?? empresa?.nome ?? ''}
+          cnpj={empresa?.cnpj ?? ''}
+          geradoPor={usuarioLogado?.nome ?? ''}
+          dataGeracao={dataGeracao}
+        />
+
+        <ReportDocumentHeader
+          title="Demonstração do Resultado do Exercício"
+          period={periodoLabel}
+        />
+
+        <div className="flex flex-col gap-1 p-4 sm:p-5">
+          <ReportLineGroup
+            numero="1"
+            titulo="Receita Operacional Bruta"
+            valor={receitaBruta}
+            formatValue={fmtValor}
+          />
           <LinhaContas natureza="RECEITA_BRUTA" tipo="CREDITO" />
-          <LinhaGrupo numero="2" titulo="Deduções e Abatimentos" valor={deducoes} />
+
+          <ReportLineGroup
+            numero="2"
+            titulo="Deduções e Abatimentos"
+            valor={deducoes}
+            formatValue={fmtValor}
+          />
           <LinhaContas natureza="DEDUCAO" tipo="DEBITO" />
-          <LinhaResultado numero="3" titulo="Receita Operacional Líquida" valor={receitaLiquida} />
-          <LinhaGrupo numero="4" titulo="Custos Operacionais" valor={custosOperacionais} />
+
+          <ReportLineResult
+            numero="3"
+            titulo="Receita Operacional Líquida"
+            valor={receitaLiquida}
+            formatValue={fmtValor}
+          />
+
+          <ReportLineGroup
+            numero="4"
+            titulo="Custos Operacionais"
+            valor={custosOperacionais}
+            formatValue={fmtValor}
+          />
           <LinhaContas natureza="CUSTO_OPERACIONAL" tipo="DEBITO" />
-          <LinhaResultado numero="5" titulo="Lucro Bruto" valor={lucroBruto} />
-          <LinhaGrupo numero="6" titulo="Despesas Operacionais" valor={totalDespesasOperacionais} />
-          <div className="ml-3">
-            {despesasVendas > 0 && <p className="text-xs text-gray-500 px-3 pt-2 font-medium">6.1 Despesas com Vendas</p>}
+
+          <ReportLineResult
+            numero="5"
+            titulo="Lucro Bruto"
+            valor={lucroBruto}
+            formatValue={fmtValor}
+          />
+
+          <ReportLineGroup
+            numero="6"
+            titulo="Despesas Operacionais"
+            valor={totalDespesasOperacionais}
+            formatValue={fmtValor}
+          />
+
+          <div className="ml-1 border-l-2 border-zinc-200 pl-2 print:border-black/20">
+            {despesasVendas > 0 && (
+              <ReportSectionLabel>6.1 Despesas com Vendas</ReportSectionLabel>
+            )}
             <LinhaContas natureza="DESPESA_VENDAS" tipo="DEBITO" />
-            {despesasFinanceiras > 0 && <p className="text-xs text-gray-500 px-3 pt-2 font-medium">6.2 Despesas Financeiras</p>}
+
+            {despesasFinanceiras > 0 && (
+              <ReportSectionLabel>6.2 Despesas Financeiras</ReportSectionLabel>
+            )}
             <LinhaContas natureza="DESPESA_FINANCEIRA" tipo="DEBITO" />
-            {receitasFinanceiras > 0 && <p className="text-xs text-gray-500 px-3 pt-2 font-medium">6.3 (-) Receitas Financeiras</p>}
-            <LinhaContas natureza="RECEITA_FINANCEIRA" tipo="CREDITO" />
-            {despesasAdministrativas > 0 && <p className="text-xs text-gray-500 px-3 pt-2 font-medium">6.4 Despesas Gerais e Administrativas</p>}
+
+            {receitasFinanceiras > 0 && (
+              <ReportSectionLabel>6.3 (-) Receitas Financeiras</ReportSectionLabel>
+            )}
+            <LinhaContas
+              natureza="RECEITA_FINANCEIRA"
+              tipo="CREDITO"
+              multiplicador={-1}
+            />
+
+            {despesasAdministrativas > 0 && (
+              <ReportSectionLabel>6.4 Despesas Gerais e Administrativas</ReportSectionLabel>
+            )}
             <LinhaContas natureza="DESPESA_ADMINISTRATIVA" tipo="DEBITO" />
-            {despesasOutras > 0 && <p className="text-xs text-gray-500 px-3 pt-2 font-medium">6.5 Outras Despesas Operacionais</p>}
+
+            {despesasOutras > 0 && (
+              <ReportSectionLabel>6.5 Outras Despesas Operacionais</ReportSectionLabel>
+            )}
             <LinhaContas natureza="DESPESA_OUTRAS" tipo="DEBITO" />
           </div>
-          <LinhaGrupo numero="7" titulo="Outras Receitas Operacionais" valor={outrasReceitasOperacionais} />
+
+          <ReportLineGroup
+            numero="7"
+            titulo="Outras Receitas Operacionais"
+            valor={outrasReceitasOperacionais}
+            formatValue={fmtValor}
+          />
           <LinhaContas natureza="RECEITA_OPERACIONAL_OUTRAS" tipo="CREDITO" />
-          <LinhaResultado numero="8" titulo="Lucro (Prejuízo) Operacional" valor={lucroOperacional} />
-          <LinhaGrupo numero="9" titulo="Outras Receitas" valor={outrasReceitas} />
+
+          <ReportLineResult
+            numero="8"
+            titulo="Lucro (Prejuízo) Operacional"
+            valor={lucroOperacional}
+            formatValue={fmtValor}
+          />
+
+          <ReportLineGroup
+            numero="9"
+            titulo="Outras Receitas"
+            valor={outrasReceitas}
+            formatValue={fmtValor}
+          />
           <LinhaContas natureza="OUTRAS_RECEITAS" tipo="CREDITO" />
-          <LinhaGrupo numero="10" titulo="Outras Despesas" valor={outrasDespesas} />
+
+          <ReportLineGroup
+            numero="10"
+            titulo="Outras Despesas"
+            valor={outrasDespesas}
+            formatValue={fmtValor}
+          />
           <LinhaContas natureza="OUTRAS_DESPESAS" tipo="DEBITO" />
-          <LinhaResultado numero="11" titulo="Resultado do Exercício Antes do IR" valor={resultadoFinal} />
+
+          <ReportLineResult
+            numero="11"
+            titulo="Resultado do Exercício Antes do IR"
+            valor={resultadoFinal}
+            formatValue={fmtValor}
+          />
         </div>
-      </div>
-    </div>
+      </ReportDocument>
+    </>
   )
 }

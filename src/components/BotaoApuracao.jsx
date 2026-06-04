@@ -2,6 +2,10 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { Calculator } from 'lucide-react'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 export default function BotaoApuracao() {
   const pathname = usePathname()
@@ -72,34 +76,43 @@ export default function BotaoApuracao() {
     setLoading(false)
   }
 
+  const atalhos = [
+    { id: 'mes-atual', label: 'Mês atual' },
+    { id: 'mes-anterior', label: 'Mês anterior' },
+    { id: 'semestre', label: 'Semestre' },
+    { id: 'ano', label: 'Ano atual' },
+  ]
+
   return (
     <div className="relative">
-      <button onClick={() => setAberto(!aberto)} className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50 text-sm font-medium">
-        Apurar Resultado
-      </button>
+      <Button type="button" variant="outline" onClick={() => setAberto(!aberto)}>
+        <Calculator className="size-4" aria-hidden />
+        Apurar resultado
+      </Button>
       {aberto && (
-        <div className="absolute right-0 mt-2 w-80 border rounded-lg shadow-lg bg-white z-20 p-4">
-          <h3 className="font-semibold mb-3">Apuração do Resultado</h3>
-          {erro && <p className="text-red-500 text-sm mb-3">{erro}</p>}
-          {sucesso && <p className="text-green-600 text-sm mb-3">{sucesso}</p>}
-          <div className="flex gap-2 flex-wrap mb-3">
-            <button onClick={() => atalho('mes-atual')} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Mês atual</button>
-            <button onClick={() => atalho('mes-anterior')} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Mês anterior</button>
-            <button onClick={() => atalho('semestre')} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Semestre</button>
-            <button onClick={() => atalho('ano')} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Ano atual</button>
+        <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border bg-popover p-4 shadow-lg animate-in fade-in slide-in-from-top-1 duration-200">
+          <h3 className="font-semibold tracking-tight">Apuração do resultado</h3>
+          {erro && <Alert variant="destructive" className="mt-3 py-2 text-xs">{erro}</Alert>}
+          {sucesso && <Alert variant="success" className="mt-3 py-2 text-xs">{sucesso}</Alert>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {atalhos.map(a => (
+              <Button key={a.id} type="button" variant="outline" size="xs" onClick={() => atalho(a.id)}>
+                {a.label}
+              </Button>
+            ))}
           </div>
-          <div className="flex gap-2 items-center mb-4">
-            <input type="date" value={inicio} onChange={e => setInicio(e.target.value)} className="flex-1 border rounded px-2 py-1 text-sm" />
-            <span className="text-gray-500 text-sm">até</span>
-            <input type="date" value={fim} onChange={e => setFim(e.target.value)} className="flex-1 border rounded px-2 py-1 text-sm" />
+          <div className="mt-3 flex items-center gap-2">
+            <Input type="date" value={inicio} onChange={e => setInicio(e.target.value)} className="h-8 flex-1" />
+            <span className="text-xs text-muted-foreground">até</span>
+            <Input type="date" value={fim} onChange={e => setFim(e.target.value)} className="h-8 flex-1" />
           </div>
-          <div className="flex gap-2">
-            <button onClick={handleApurar} disabled={loading} className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm">
+          <div className="mt-4 flex gap-2">
+            <Button type="button" className="flex-1" onClick={handleApurar} disabled={loading}>
               {loading ? 'Apurando...' : 'Confirmar'}
-            </button>
-            <button onClick={() => setAberto(false)} className="px-4 py-2 border rounded hover:bg-gray-50 text-sm">
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setAberto(false)}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       )}

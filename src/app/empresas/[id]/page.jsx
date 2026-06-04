@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import DashboardAdmin from './DashboardAdmin'
 import DashboardColaborador from './DashboardColaborador'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function EmpresaPage({ params }) {
   const session = await auth()
@@ -93,5 +94,12 @@ export default async function EmpresaPage({ params }) {
     lotesDoUsuario: ultimos3LotesDoUsuario,
   }
 
-  return isAdmin ? <DashboardAdmin {...props} /> : <DashboardColaborador {...props} />
+  const mesLabel = hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+
+  return (
+    <div>
+     {isAdmin ? <DashboardAdmin {...props} /> : <DashboardColaborador {...props} />}
+    </div>
+    
+  )
 }

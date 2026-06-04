@@ -4,6 +4,14 @@ import { redirect } from 'next/navigation'
 import BotaoImprimir from '@/components/BotaoImprimir'
 import FiltroPeriodo from '@/components/FiltroPeriodo'
 import { formatarMoeda } from '@/lib/formatacao'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Alert } from '@/components/ui/alert'
+import {
+  ReportDocument,
+  ReportDocumentHeader,
+  ReportPdfHeader,
+} from '@/components/financial/ReportDocument'
+import { cn } from '@/lib/utils'
 
 export default async function BalancoPage({ params, searchParams }) {
   const session = await auth()
@@ -31,150 +39,292 @@ export default async function BalancoPage({ params, searchParams }) {
   const dataGeracao = new Date().toLocaleDateString('pt-BR')
 
   const hoje = new Date()
-  const inicioData = inicio ? new Date(inicio + 'T12:00:00') : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
-  const fimData = fim ? new Date(fim + 'T12:00:00') : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
+  const inicioData = inicio
+    ? new Date(`${inicio}T12:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
+  const fimData = fim
+    ? new Date(`${fim}T12:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
 
-  const lancamentos = await prisma.lancamento.findMany({
+  /*
+    Balanço Patrimonial é uma posição em uma data.
+    Por isso, os saldos patrimoniais devem ser acumulados até a data final selecionada,
+    e não apenas dentro do intervalo início/fim.
+  */
+  const lancamentosPatrimoniais = await prisma.lancamento.findMany({
     where: {
       empresaId: id,
-      lote: { data: { gte: inicioData, lte: fimData } },
+      lote: {
+        data: {
+          lte: fimData,
+        },
+      },
+      conta: {
+        tipo: {
+          in: ['ATIVO', 'PASSIVO', 'PATRIMONIO_LIQUIDO'],
+        },
+      },
     },
     include: { conta: true },
   })
 
-  // Agrupa todos os lançamentos por conta em uma única iteração
+  /*
+    Estes lançamentos não entram diretamente no Balanço.
+    Eles servem apenas para avisar o usuário caso o balanço não esteja equilibrado
+    e ainda exista resultado do período que talvez precise ser apurado para o PL.
+  */
+  const lancamentosResultadoPeriodo = await prisma.lancamento.findMany({
+    where: {
+      empresaId: id,
+      lote: {
+        data: {
+          gte: inicioData,
+          lte: fimData,
+        },
+      },
+      conta: {
+        tipo: {
+          in: ['RECEITA', 'DESPESA', 'CUSTO'],
+        },
+      },
+    },
+    include: { conta: true },
+  })
+
+  function calcularResultadoPeriodo() {
+    return lancamentosResultadoPeriodo.reduce((acc, lancamento) => {
+      const valor = Number(lancamento.valor)
+
+      if (lancamento.conta.tipo === 'RECEITA') {
+        return acc + (lancamento.tipo === 'CREDITO' ? valor : -valor)
+      }
+
+      if (['DESPESA', 'CUSTO'].includes(lancamento.conta.tipo)) {
+        return acc - (lancamento.tipo === 'DEBITO' ? valor : -valor)
+      }
+
+      return acc
+    }, 0)
+  }
+
+  const resultadoPeriodo = calcularResultadoPeriodo()
+
   const saldosPorConta = {}
-  for (const l of lancamentos) {
-    const { conta } = l
-    if (!['ATIVO', 'PASSIVO', 'PATRIMONIO_LIQUIDO'].includes(conta.tipo)) continue
+
+  for (const lancamento of lancamentosPatrimoniais) {
+    const { conta } = lancamento
 
     if (!saldosPorConta[conta.id]) {
       saldosPorConta[conta.id] = { conta, debitos: 0, creditos: 0 }
     }
 
-    if (l.tipo === 'DEBITO') {
-      saldosPorConta[conta.id].debitos += Number(l.valor)
+    if (lancamento.tipo === 'DEBITO') {
+      saldosPorConta[conta.id].debitos += Number(lancamento.valor)
     } else {
-      saldosPorConta[conta.id].creditos += Number(l.valor)
+      saldosPorConta[conta.id].creditos += Number(lancamento.valor)
     }
   }
 
-  // Calcula saldo final conforme natureza contábil
-  const contasComSaldo = Object.values(saldosPorConta).map(({ conta, debitos, creditos }) => {
-    const naturezaDevedora = conta.tipo === 'ATIVO'
-    const saldo = naturezaDevedora ? debitos - creditos : creditos - debitos
-    return { conta, saldo }
-  }).filter(c => c.saldo !== 0)
+  const contasComSaldo = Object.values(saldosPorConta)
+    .map(({ conta, debitos, creditos }) => {
+      const naturezaDevedora = conta.tipo === 'ATIVO'
+      const saldo = naturezaDevedora ? debitos - creditos : creditos - debitos
 
-  // Separa por grupo
-  const ativos = contasComSaldo.filter(c => c.conta.tipo === 'ATIVO').sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
-  const passivos = contasComSaldo.filter(c => c.conta.tipo === 'PASSIVO').sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
-  const pl = contasComSaldo.filter(c => c.conta.tipo === 'PATRIMONIO_LIQUIDO').sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
+      return { conta, saldo }
+    })
+    .filter(conta => Math.abs(conta.saldo) >= 0.01)
+
+  const ativos = contasComSaldo
+    .filter(c => c.conta.tipo === 'ATIVO')
+    .sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
+
+  const passivos = contasComSaldo
+    .filter(c => c.conta.tipo === 'PASSIVO')
+    .sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
+
+  const pl = contasComSaldo
+    .filter(c => c.conta.tipo === 'PATRIMONIO_LIQUIDO')
+    .sort((a, b) => a.conta.codigo.localeCompare(b.conta.codigo))
 
   const totalAtivo = ativos.reduce((acc, c) => acc + c.saldo, 0)
   const totalPassivo = passivos.reduce((acc, c) => acc + c.saldo, 0)
   const totalPL = pl.reduce((acc, c) => acc + c.saldo, 0)
   const totalPassivoMaisPL = totalPassivo + totalPL
-  const balanceado = Math.abs(totalAtivo - totalPassivoMaisPL) < 0.01
+  const diferencaBalanco = totalAtivo - totalPassivoMaisPL
+  const balanceado = Math.abs(diferencaBalanco) < 0.01
 
   const fmt = d => new Date(d.getTime() + d.getTimezoneOffset() * -60000).toLocaleDateString('pt-BR')
-  const periodoLabel = `${fmt(inicioData)} até ${fmt(fimData)}`
+  const periodoSelecionado = `${fmt(inicioData)} até ${fmt(fimData)}`
+  const periodoLabel = `Posição em ${fmt(fimData)}`
+  const fmtValor = v => `R$ ${formatarMoeda(v)}`
 
-  function CabecalhoPDF() {
+  function ColunaContas({ titulo, contas, total, headerClass }) {
     return (
-      <div className="cabecalho-pdf mb-6 border-b pb-4 p-4">
-        <h2 className="text-xl font-bold">{empresa.razaoSocial}</h2>
-        <p className="text-sm text-gray-600">CNPJ: {empresa.cnpj}</p>
-        <p className="text-xs text-gray-400 mt-2">Gerado por: {usuarioLogado.nome} — {dataGeracao}</p>
+      <div className="flex h-full flex-col">
+        <div
+          className={cn(
+            'flex items-center justify-between gap-4 px-4 py-3 text-sm font-semibold print:bg-transparent print:text-black',
+            headerClass
+          )}
+        >
+          <span>{titulo}</span>
+          <span className="financial-amount">{fmtValor(total)}</span>
+        </div>
+
+        <div className="flex-1 px-4 py-2">
+          {contas.length === 0 ? (
+            <p className="py-4 text-sm text-zinc-500 print:text-black">
+              Nenhuma conta com saldo
+            </p>
+          ) : (
+            <div className="flex flex-col divide-y divide-zinc-200 print:divide-black/20">
+              {contas.map(({ conta, saldo }) => (
+                <div key={conta.id} className="flex items-start justify-between gap-4 py-3 text-sm">
+                  <span className="min-w-0 flex-1 break-words text-zinc-700 print:text-black">
+                    {conta.codigo} - {conta.nome}
+                  </span>
+
+                  <span className={cn('shrink-0 font-medium', saldo < 0 && 'text-red-700 print:text-black')}>
+                    {fmtValor(saldo)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl">
-      <div className="flex justify-between items-center mb-4 no-print">
-        <div>
-          <h1 className="text-2xl font-bold">Balanço Patrimonial</h1>
-          <p className="text-gray-500 text-sm">Posição do período</p>
-        </div>
-        <BotaoImprimir />
-      </div>
-      <div className="no-print">
-        <FiltroPeriodo />
-        {contasComSaldo.some(c => c.saldo < 0) && (
-          <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm px-4 py-3 rounded mb-4 no-print">
-            ⚠️ Existem contas com saldo negativo. Isso pode indicar erro nos lançamentos.
-          </div>
-        )}
-      </div>
-      <div id="relatorio-print" className="border rounded-lg overflow-hidden">
-        <CabecalhoPDF />
-        <div className="bg-gray-800 text-white p-4">
-          <h2 className="font-bold text-center">BALANÇO PATRIMONIAL</h2>
-          <p className="text-center text-gray-400 text-sm">{periodoLabel}</p>
-        </div>
-        <div className="grid grid-cols-2 divide-x">
-          <div className="p-4">
-            <div className="flex justify-between font-semibold text-blue-700 bg-blue-50 px-3 py-2 rounded mb-2">
-              <span>ATIVO</span>
-              <span>R$ {formatarMoeda(totalAtivo)}</span>
-            </div>
-            {ativos.length === 0 ? (
-              <p className="text-sm text-gray-400 px-3 py-2">Nenhum ativo registrado</p>
-            ) : (
-              ativos.map(({ conta, saldo }) => (
-                <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
-                  <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                  <span className={saldo < 0 ? 'text-red-600' : ''}>R$ {formatarMoeda(saldo)}</span>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="p-4">
-            <div className="flex justify-between font-semibold text-red-700 bg-red-50 px-3 py-2 rounded mb-2">
-              <span>PASSIVO</span>
-              <span>R$ {formatarMoeda(totalPassivo)}</span>
-            </div>
-            {passivos.length === 0 ? (
-              <p className="text-sm text-gray-400 px-3 py-2">Nenhum passivo registrado</p>
-            ) : (
-              passivos.map(({ conta, saldo }) => (
-                <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
-                  <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                  <span className={saldo < 0 ? 'text-red-600' : ''}>R$ {formatarMoeda(saldo)}</span>
-                </div>
-              ))
-            )}
-            <div className="flex justify-between font-semibold text-purple-700 bg-purple-50 px-3 py-2 rounded mb-2 mt-4">
-              <span>PATRIMÔNIO LÍQUIDO</span>
-              <span>R$ {formatarMoeda(totalPL)}</span>
-            </div>
-            {pl.length === 0 ? (
-              <p className="text-sm text-gray-400 px-3 py-2">Nenhum PL registrado</p>
-            ) : (
-              pl.map(({ conta, saldo }) => (
-                <div key={conta.id} className="flex justify-between text-sm px-3 py-2 border-b">
-                  <span className="text-gray-600">{conta.codigo} - {conta.nome}</span>
-                  <span className={saldo < 0 ? 'text-red-600' : ''}>R$ {formatarMoeda(saldo)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 divide-x border-t">
-          <div className={`flex justify-between font-bold px-7 py-3 ${balanceado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            <span>TOTAL ATIVO</span>
-            <span>R$ {formatarMoeda(totalAtivo)}</span>
-          </div>
-          <div className={`flex justify-between font-bold px-7 py-3 ${balanceado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            <span>TOTAL P + PL</span>
-            <span>R$ {formatarMoeda(totalPassivoMaisPL)}</span>
-          </div>
+    <>
+      <div className="space-y-4">
+        <PageHeader
+          title="Balanço Patrimonial"
+          description="Posição patrimonial acumulada até a data final selecionada"
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+          <FiltroPeriodo />
+          <BotaoImprimir />
         </div>
       </div>
-      {!balanceado && (
-        <p className="text-red-500 text-sm mt-2 no-print">⚠️ Balanço não está equilibrado! Verifique os lançamentos.</p>
+
+      {contasComSaldo.some(c => c.saldo < 0) && (
+        <Alert variant="destructive" className="mt-4 print:hidden">
+          Existem contas patrimoniais com saldo negativo. Isso pode indicar erro nos lançamentos
+          ou conta com natureza inversa.
+        </Alert>
       )}
-    </div>
+
+      {!balanceado && Math.abs(resultadoPeriodo) >= 0.01 && (
+        <Alert variant="destructive" className="mt-4 print:hidden">
+          O balanço não está equilibrado e existe resultado no período selecionado
+          ({periodoSelecionado}) no valor de {fmtValor(resultadoPeriodo)}.
+          Se esse resultado ainda não foi apurado para o Patrimônio Líquido, o balanço pode não fechar.
+        </Alert>
+      )}
+
+      <ReportDocument>
+        <ReportPdfHeader
+          razaoSocial={empresa?.razaoSocial ?? empresa?.nome ?? ''}
+          cnpj={empresa?.cnpj ?? ''}
+          geradoPor={usuarioLogado?.nome ?? ''}
+          dataGeracao={dataGeracao}
+        />
+
+        <ReportDocumentHeader title="Balanço Patrimonial" period={periodoLabel} />
+
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white print:rounded-none print:border-0">
+          <div className="grid divide-y md:grid-cols-2 md:divide-x md:divide-y-0 print:divide-black/20">
+            <ColunaContas
+              titulo="ATIVO"
+              contas={ativos}
+              total={totalAtivo}
+              headerClass="bg-blue-50 text-blue-900 print:bg-transparent print:text-black"
+            />
+
+            <div className="flex h-full flex-col">
+              <ColunaContas
+                titulo="PASSIVO"
+                contas={passivos}
+                total={totalPassivo}
+                headerClass="bg-amber-50 text-amber-900 print:bg-transparent print:text-black"
+              />
+
+              <div className="border-t border-zinc-200 px-4 py-0 print:border-black/20">
+                <div
+                  className={cn(
+                    'mt-4 flex items-center justify-between gap-4 px-4 py-3 text-sm font-semibold print:bg-transparent print:text-black',
+                    'bg-violet-50 text-violet-900'
+                  )}
+                >
+                  <span>PATRIMÔNIO LÍQUIDO</span>
+                  <span className="financial-amount">{fmtValor(totalPL)}</span>
+                </div>
+
+                {pl.length === 0 ? (
+                  <p className="px-4 py-4 text-sm text-zinc-500 print:text-black">
+                    Nenhum PL com saldo
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-col divide-y divide-zinc-200 print:divide-black/20">
+                    {pl.map(({ conta, saldo }) => (
+                      <div key={conta.id} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+                        <span className="min-w-0 flex-1 break-words text-zinc-700 print:text-black">
+                          {conta.codigo} - {conta.nome}
+                        </span>
+
+                        <span className={cn('shrink-0 font-medium', saldo < 0 && 'text-red-700 print:text-black')}>
+                          {fmtValor(saldo)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid divide-y border-t md:grid-cols-2 md:divide-x md:divide-y-0 print:divide-black/20">
+            <div
+              className={cn(
+                'flex items-center justify-between gap-4 px-6 py-4 text-sm font-bold print:bg-transparent print:text-black',
+                balanceado ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'
+              )}
+            >
+              <span>TOTAL ATIVO</span>
+              <span className="financial-amount">{fmtValor(totalAtivo)}</span>
+            </div>
+
+            <div
+              className={cn(
+                'flex items-center justify-between gap-4 px-6 py-4 text-sm font-bold print:bg-transparent print:text-black',
+                balanceado ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'
+              )}
+            >
+              <span>TOTAL P + PL</span>
+              <span className="financial-amount">{fmtValor(totalPassivoMaisPL)}</span>
+            </div>
+          </div>
+
+          {!balanceado && (
+            <div className="border-t border-red-200 bg-red-50 px-6 py-3 text-sm font-medium text-red-900 print:hidden">
+              Diferença do balanço: {fmtValor(diferencaBalanco)}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-500 print:border-black print:text-black">
+          Documento gerado automaticamente por PPEM Contabilidade.
+        </div>
+
+        {!balanceado && (
+          <Alert variant="destructive" className="mt-4 print:hidden">
+            Balanço não está equilibrado. Verifique os lançamentos e a apuração do resultado.
+          </Alert>
+        )}
+      </ReportDocument>
+    </>
   )
 }
