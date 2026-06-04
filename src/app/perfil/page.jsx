@@ -424,6 +424,17 @@ export default function PerfilPage() {
                     <p className="mt-1 text-xs text-zinc-400">
                       Membro desde {new Date(usuario.criadoEm).toLocaleDateString('pt-BR')}
                     </p>
+
+                    {form.foto && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setForm(prev => ({ ...prev, foto: '' }))}
+                        className="mt-3 h-9 rounded-xl text-red-600 hover:text-red-700"
+                      >
+                        Remover foto
+                      </Button>
+                    )}
                   </div>
                 </div>
 

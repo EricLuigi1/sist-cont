@@ -6,6 +6,17 @@ function limparTexto(valor) {
   return String(valor || '').trim()
 }
 
+function validarLogo(logo) {
+  if (!logo) return true
+
+  if (typeof logo !== 'string') return false
+
+  const ehBase64Imagem = logo.startsWith('data:image/')
+  const tamanhoMaximo = 1024 * 1024 * 1.5
+
+  return ehBase64Imagem && logo.length <= tamanhoMaximo
+}
+
 export async function GET(request, { params }) {
   const session = await auth()
 
@@ -44,6 +55,7 @@ export async function GET(request, { params }) {
       endereco: true,
       cidade: true,
       estado: true,
+      logo: true,
       codigoConvite: true,
       criadoEm: true,
     },
@@ -106,6 +118,7 @@ export async function PUT(request, { params }) {
   const endereco = limparTexto(body.endereco)
   const cidade = limparTexto(body.cidade)
   const estado = limparTexto(body.estado).toUpperCase()
+  const logo = body.logo || null
 
   if (!nome) {
     return NextResponse.json(
@@ -184,6 +197,13 @@ export async function PUT(request, { params }) {
     )
   }
 
+  if (!validarLogo(logo)) {
+    return NextResponse.json(
+      { erro: 'A logo deve ser uma imagem válida de até 1MB.' },
+      { status: 400 }
+    )
+  }
+
   try {
     const empresa = await prisma.empresa.update({
       where: { id },
@@ -193,6 +213,7 @@ export async function PUT(request, { params }) {
         endereco,
         cidade,
         estado,
+        logo,
       },
       select: {
         id: true,
@@ -202,6 +223,7 @@ export async function PUT(request, { params }) {
         endereco: true,
         cidade: true,
         estado: true,
+        logo: true,
         codigoConvite: true,
         criadoEm: true,
       },

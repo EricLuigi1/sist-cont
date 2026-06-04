@@ -6,12 +6,14 @@ import {
   ArrowLeft,
   Building2,
   CalendarDays,
+  Camera,
   CheckCircle2,
   FileText,
   Landmark,
   MapPin,
   Pencil,
   Save,
+  Trash2,
   X,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -38,6 +40,7 @@ export default function InfoEmpresaPage() {
     endereco: '',
     cidade: '',
     estado: '',
+    logo: '',
   })
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export default function InfoEmpresaPage() {
           endereco: data.endereco || '',
           cidade: data.cidade || '',
           estado: data.estado || '',
+          logo: data.logo || '',
         })
       })
   }, [id])
@@ -73,6 +77,35 @@ export default function InfoEmpresaPage() {
     }))
   }
 
+  function handleLogo(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setErro('')
+    setSucesso('')
+
+    if (!file.type.startsWith('image/')) {
+      setErro('Selecione uma imagem válida para a logo.')
+      return
+    }
+
+    if (file.size > 1024 * 1024) {
+      setErro('A logo deve ter no máximo 1MB.')
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      setForm(prev => ({
+        ...prev,
+        logo: String(reader.result || ''),
+      }))
+    }
+
+    reader.readAsDataURL(file)
+  }
+
   function validarFormulario() {
     const dados = {
       nome: form.nome.trim(),
@@ -80,10 +113,15 @@ export default function InfoEmpresaPage() {
       endereco: form.endereco.trim(),
       cidade: form.cidade.trim(),
       estado: form.estado.trim().toUpperCase(),
+      logo: form.logo || null,
     }
 
     if (!dados.nome) {
       return { valido: false, mensagem: 'Informe o nome fantasia da empresa.' }
+    }
+
+    if (dados.nome.length < 2) {
+      return { valido: false, mensagem: 'O nome fantasia deve ter pelo menos 2 caracteres.' }
     }
 
     if (!dados.razaoSocial) {
@@ -136,11 +174,27 @@ export default function InfoEmpresaPage() {
       const data = await res.json().catch(() => null)
 
       if (res.ok) {
+        const empresaAtualizada = data?.empresa || {
+          ...empresa,
+          ...validacao.dados,
+        }
+
         setSucesso('Empresa atualizada com sucesso!')
         setEmpresa(prev => ({
           ...prev,
-          ...validacao.dados,
+          ...empresaAtualizada,
         }))
+        setForm({
+          nome: empresaAtualizada.nome || '',
+          razaoSocial: empresaAtualizada.razaoSocial || '',
+          endereco: empresaAtualizada.endereco || '',
+          cidade: empresaAtualizada.cidade || '',
+          estado: empresaAtualizada.estado || '',
+          logo: empresaAtualizada.logo || '',
+        })
+
+        window.dispatchEvent(new Event('empresaAtualizada'))
+        
         setEditando(false)
         setTimeout(() => setSucesso(''), 3000)
       } else {
@@ -160,10 +214,29 @@ export default function InfoEmpresaPage() {
       endereco: empresa.endereco || '',
       cidade: empresa.cidade || '',
       estado: empresa.estado || '',
+      logo: empresa.logo || '',
     })
     setEditando(false)
     setErro('')
     setSucesso('')
+  }
+
+  function AvatarEmpresa({ logo, nome, size = 'lg' }) {
+    const sizeClass = size === 'xl' ? 'size-20 rounded-3xl text-2xl' : 'size-14 rounded-3xl text-lg'
+
+    return (
+      <div className={`flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden bg-zinc-950 font-semibold text-white shadow-sm`}>
+        {logo ? (
+          <img
+            src={logo}
+            alt="Logo da empresa"
+            className="size-full object-cover"
+          />
+        ) : (
+          nome?.[0]?.toUpperCase() || 'E'
+        )}
+      </div>
+    )
   }
 
   if (!empresa) {
@@ -276,6 +349,44 @@ export default function InfoEmpresaPage() {
             </div>
 
             <form onSubmit={handleSalvar} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row sm:items-center sm:p-5">
+                <AvatarEmpresa logo={form.logo} nome={form.nome} size="xl" />
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-zinc-950">
+                    Logo da empresa
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Use uma imagem quadrada de até 1MB.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800">
+                      <Camera className="size-4" aria-hidden />
+                      Alterar logo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogo}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {form.logo && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setForm(prev => ({ ...prev, logo: '' }))}
+                        className="h-9 rounded-xl text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                        Remover logo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Nome fantasia" htmlFor="nome">
                   <Input
@@ -377,9 +488,7 @@ export default function InfoEmpresaPage() {
           <Card className="mt-6 overflow-hidden rounded-3xl border-zinc-200 bg-white shadow-sm">
             <CardContent className="p-6 sm:p-8">
               <div className="mb-6 flex items-start gap-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-5">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-3xl bg-zinc-950 text-lg font-semibold text-white shadow-sm">
-                  {empresa.nome?.[0]?.toUpperCase() || 'E'}
-                </div>
+                <AvatarEmpresa logo={empresa.logo} nome={empresa.nome} />
 
                 <div className="min-w-0">
                   <h2 className="truncate text-xl font-semibold text-zinc-950">
@@ -424,7 +533,7 @@ export default function InfoEmpresaPage() {
                           </div>
 
                           <p className="mt-1 break-words font-medium text-zinc-950">
-                            {empresa[campo.key] || '—'}
+                            {empresa[campo.key] || 'Não informado'}
                           </p>
                         </div>
                       </div>

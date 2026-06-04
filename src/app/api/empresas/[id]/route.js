@@ -26,7 +26,11 @@ export async function GET(request, { params }) {
   }
 
   return NextResponse.json({
+    id: vinculo.empresa.id,
     nome: vinculo.empresa.nome,
+    razaoSocial: vinculo.empresa.razaoSocial,
+    cnpj: vinculo.empresa.cnpj,
+    logo: vinculo.empresa.logo,
     codigoConvite: vinculo.papel === 'ADMIN' ? vinculo.empresa.codigoConvite : null,
     papel: vinculo.papel,
   })

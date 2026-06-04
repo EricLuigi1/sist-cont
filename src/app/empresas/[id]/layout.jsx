@@ -27,6 +27,27 @@ const relatorioLinks = [
   { href: 'relatorios/fluxo', label: 'Fluxo de Caixa' },
 ]
 
+function EmpresaAvatar({ empresa, className = '' }) {
+  return (
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-black text-sm font-semibold text-white',
+        className
+      )}
+    >
+      {empresa?.logo ? (
+        <img
+          src={empresa.logo}
+          alt="Logo da empresa"
+          className="size-full object-cover"
+        />
+      ) : (
+        empresa?.nome?.[0]?.toUpperCase() ?? 'E'
+      )}
+    </div>
+  )
+}
+
 export default function EmpresaLayout({ children }) {
   const [relatoriosAberto, setRelatoriosAberto] = useState(false)
   const [sidebarAberta, setSidebarAberta] = useState(false)
@@ -42,25 +63,24 @@ export default function EmpresaLayout({ children }) {
   const perfilRef = useRef(null)
   const codigoRef = useRef(null)
 
+  const navPrincipal = [
+    { href: `/empresas/${id}/lancamentos`, label: 'Lançamentos', icon: Receipt },
+    { href: `/empresas/${id}/contas`, label: 'Plano de Contas', icon: BookOpen },
+    { href: `/empresas/${id}/colaboradores`, label: 'Colaboradores', icon: Users },
 
-const navPrincipal = [
-  { href: `/empresas/${id}/lancamentos`, label: 'Lançamentos', icon: Receipt },
-  { href: `/empresas/${id}/contas`, label: 'Plano de Contas', icon: BookOpen },
-  { href: `/empresas/${id}/colaboradores`, label: 'Colaboradores', icon: Users },
+    ...(empresa?.papel === 'ADMIN'
+      ? [
+          {
+            href: `/empresas/${id}/pedidos`,
+            label: 'Pedidos',
+            icon: UserPlus,
+            badge: pedidosPendentes,
+          },
+        ]
+      : []),
 
-  ...(empresa?.papel === 'ADMIN'
-    ? [
-        {
-          href: `/empresas/${id}/pedidos`,
-          label: 'Pedidos',
-          icon: UserPlus,
-          badge: pedidosPendentes,
-        },
-      ]
-    : []),
-
-  { href: `/empresas/${id}/info`, label: 'Informações', icon: Info },
-]
+    { href: `/empresas/${id}/info`, label: 'Informações', icon: Info },
+  ]
 
   const relatoriosAtivo = pathname.includes('/relatorios/')
 
@@ -69,15 +89,29 @@ const navPrincipal = [
   }, [relatoriosAtivo])
 
   useEffect(() => {
-    if (id) {
-      fetch(`/api/empresas/${id}`)
+    function carregarEmpresa() {
+      if (!id) return
+
+      fetch(`/api/empresas/${id}`, {
+        cache: 'no-store',
+      })
         .then(res => res.json())
         .then(data => setEmpresa(data))
     }
 
-    fetch('/api/perfil')
+    carregarEmpresa()
+
+    fetch('/api/perfil', {
+      cache: 'no-store',
+    })
       .then(res => res.json())
       .then(data => setUsuario(data))
+
+    window.addEventListener('empresaAtualizada', carregarEmpresa)
+
+    return () => {
+      window.removeEventListener('empresaAtualizada', carregarEmpresa)
+    }
   }, [id])
 
   useEffect(() => {
@@ -134,9 +168,8 @@ const navPrincipal = [
         href={`/empresas/${id}`}
         className="mb-6 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-3 py-3 shadow-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md"
       >
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-black text-sm font-semibold text-white">
-          {empresa?.nome?.[0]?.toUpperCase() ?? 'E'}
-        </div>
+        <EmpresaAvatar empresa={empresa} className="size-11" />
+
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-zinc-900">
             {empresa?.nome ?? 'Carregando...'}
@@ -203,6 +236,7 @@ const navPrincipal = [
 
         {navPrincipal.map(item => {
           const Icon = item.icon
+
           return (
             <Link
               key={item.href}
@@ -214,13 +248,13 @@ const navPrincipal = [
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden />
               <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              <span className="truncate">{item.label}</span>
-              {item.badge > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">
-                  {item.badge}
-                </span>
-              )}
-            </span>
+                <span className="truncate">{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">
+                    {item.badge}
+                  </span>
+                )}
+              </span>
             </Link>
           )
         })}
@@ -251,7 +285,22 @@ const navPrincipal = [
             >
               <Receipt className="h-5 w-5" />
             </Button>
-            <div>
+
+            <div className="hidden items-center gap-3 sm:flex">
+               <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-xs font-bold text-white">
+                PPEM
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-900">
+                  PPEM Contabilidade
+                </p>
+                <p className="max-w-[220px] truncate text-xs text-zinc-500">
+                  {empresa?.nome ?? 'Workspace'}
+                </p>
+              </div>
+            </div>
+
+            <div className="sm:hidden">
               <p className="text-sm font-semibold text-zinc-900">PPEM Contabilidade</p>
               <p className="text-xs text-zinc-500">Workspace</p>
             </div>
@@ -317,9 +366,9 @@ const navPrincipal = [
                     Alterar Senha
                   </a>
                   <hr className="my-1 border-zinc-200" />
-                 <BotaoSair className="block w-full px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50">
-                  Sair
-                 </BotaoSair>
+                  <BotaoSair className="block w-full px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50">
+                    Sair
+                  </BotaoSair>
                 </div>
               )}
             </div>
@@ -362,7 +411,7 @@ const navPrincipal = [
 
         <main className="flex-1 overflow-x-hidden">
           <div className="page-container px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-                {children}
+            {children}
           </div>
         </main>
       </div>

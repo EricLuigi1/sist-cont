@@ -32,6 +32,7 @@ model Empresa {
   cidade         String
   estado         String
   codigoConvite  String           @unique @default(cuid())
+  logo           String?
   criadoEm      DateTime         @default(now())
   pedidosEmpresa PedidoEmpresa[]
   usuarios       EmpresaUsuario[]
