@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import BotaoSair from '@/components/BotaoSair'
 import {
   ArrowLeft,
   BarChart3,
@@ -316,13 +317,9 @@ const navPrincipal = [
                     Alterar Senha
                   </a>
                   <hr className="my-1 border-zinc-200" />
-                  <a
-                    href="/api/auth/signout"
-                    role="menuitem"
-                    className="block px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
-                  >
-                    Sair
-                  </a>
+                 <BotaoSair className="block w-full px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50">
+                  Sair
+                 </BotaoSair>
                 </div>
               )}
             </div>

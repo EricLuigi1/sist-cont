@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
+import BotaoSair from '@/components/BotaoSair'
 import {
   ArrowRight,
   Building2,
@@ -55,9 +56,9 @@ export default async function DashboardPage() {
             </div>
 
             <Button asChild variant="outline" className="h-10 rounded-2xl">
-              <Link href="/api/auth/signout">
+             <BotaoSair className="block px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50">
                 Sair
-              </Link>
+             </BotaoSair>
             </Button>
           </div>
         </div>
