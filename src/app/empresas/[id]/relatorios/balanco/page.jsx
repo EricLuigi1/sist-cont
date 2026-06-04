@@ -40,17 +40,14 @@ export default async function BalancoPage({ params, searchParams }) {
 
   const hoje = new Date()
   const inicioData = inicio
-    ? new Date(`${inicio}T12:00:00`)
-    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
-  const fimData = fim
-    ? new Date(`${fim}T12:00:00`)
-    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
+    ? new Date(`${inicio}T00:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0)
 
-  /*
-    Balanço Patrimonial é uma posição em uma data.
-    Por isso, os saldos patrimoniais devem ser acumulados até a data final selecionada,
-    e não apenas dentro do intervalo início/fim.
-  */
+  const fimData = fim
+    ? new Date(`${fim}T23:59:59.999`)
+    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999)
+
+
   const lancamentosPatrimoniais = await prisma.lancamento.findMany({
     where: {
       empresaId: id,

@@ -49,21 +49,12 @@ export default async function FluxoCaixaPage({ params, searchParams }) {
 
   const hoje = new Date()
   const inicioData = inicio
-    ? new Date(`${inicio}T12:00:00`)
-    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
+    ? new Date(`${inicio}T00:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0)
 
   const fimData = fim
-    ? new Date(`${fim}T12:00:00`)
-    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
-
-  /*
-    O fluxo abaixo mantém a mesma regra que seu sistema já usava:
-    contas do ATIVO debitadas são entradas e contas do ATIVO creditadas são saídas.
-
-    Importante: para um fluxo de caixa 100% contábil, o ideal no futuro é marcar quais
-    contas do ativo representam Caixa/Bancos/Equivalentes de Caixa. Sem esse campo,
-    o relatório trabalha com as contas de ATIVO como base.
-  */
+    ? new Date(`${fim}T23:59:59.999`)
+    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999)
 
   const lancamentosAntesDoPeriodo = await prisma.lancamento.findMany({
     where: {

@@ -43,11 +43,12 @@ export default async function DREPage({ params, searchParams }) {
 
   const hoje = new Date()
   const inicioData = inicio
-    ? new Date(`${inicio}T12:00:00`)
-    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12)
+    ? new Date(`${inicio}T00:00:00`)
+    : new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0)
+
   const fimData = fim
-    ? new Date(`${fim}T12:00:00`)
-    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12)
+    ? new Date(`${fim}T23:59:59.999`)
+    : new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999)
 
   const lancamentos = await prisma.lancamento.findMany({
     where: {
