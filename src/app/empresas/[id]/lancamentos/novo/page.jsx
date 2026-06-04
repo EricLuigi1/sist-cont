@@ -544,15 +544,23 @@ export default function NovoLancamentoPage() {
         title="Novo lançamento"
         description="Registre débitos e créditos de forma balanceada"
         actions={
-          <Button type="button" variant="outline" asChild className="rounded-xl">
-            <Link href={`/empresas/${id}/lancamentos`}>
-              <ArrowLeft className="size-4" aria-hidden />
-              Voltar
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" asChild className="rounded-xl">
+              <Link href={`/empresas/${id}/contas/nova?voltar=/empresas/${id}/lancamentos/novo`}>
+                <Plus className="size-4" aria-hidden />
+                Nova conta
+              </Link>
+            </Button>
+
+            <Button type="button" variant="outline" asChild className="rounded-xl">
+              <Link href={`/empresas/${id}/lancamentos`}>
+                <ArrowLeft className="size-4" aria-hidden />
+                Voltar
+              </Link>
+            </Button>
+          </div>
         }
       />
-
       {erro && (
         <Alert variant="destructive" className="mt-4 rounded-2xl">
           {erro}

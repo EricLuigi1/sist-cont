@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
   BookOpen,
@@ -51,7 +51,9 @@ const naturezasDRE = {
 export default function NovaContaPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const id = params.id
+  const voltar = searchParams.get('voltar') || `/empresas/${id}/contas`
 
   const [loading, setLoading] = useState(false)
   const [carregandoContas, setCarregandoContas] = useState(true)
@@ -181,7 +183,7 @@ export default function NovaContaPage() {
       const data = await res.json().catch(() => null)
 
       if (res.ok) {
-        router.push(`/empresas/${id}/contas`)
+        router.push(voltar)
         return
       }
 
@@ -208,7 +210,7 @@ export default function NovaContaPage() {
         </div>
 
         <Button asChild variant="outline" className="rounded-xl">
-          <Link href={`/empresas/${id}/contas`}>
+          <Link href={voltar}>
             <ArrowLeft className="size-4" aria-hidden />
             Voltar
           </Link>
@@ -379,7 +381,7 @@ export default function NovaContaPage() {
                 asChild
                 className="h-11 rounded-xl px-5"
               >
-                <Link href={`/empresas/${id}/contas`}>
+                <Link href={voltar}>
                   Cancelar
                 </Link>
               </Button>
