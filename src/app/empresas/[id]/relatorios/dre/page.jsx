@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import BotaoImprimir from '@/components/BotaoImprimir'
 import FiltroPeriodo from '@/components/FiltroPeriodo'
 import { formatarMoeda } from '@/lib/formatacao'
+import BotaoApuracao from '@/components/BotaoApuracao'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Alert } from '@/components/ui/alert'
 import {
@@ -53,9 +54,34 @@ export default async function DREPage({ params, searchParams }) {
   const lancamentos = await prisma.lancamento.findMany({
     where: {
       empresaId: id,
-      lote: { data: { gte: inicioData, lte: fimData } },
+      lote: {
+        data: {
+          gte: inicioData,
+          lte: fimData,
+        },
+        NOT: [
+          {
+            historico: {
+              contains: 'Apuração do Resultado',
+            },
+          },
+          {
+            historico: {
+              contains: 'Lucro apurado',
+            },
+          },
+          {
+            historico: {
+              contains: 'Prejuízo apurado',
+            },
+          },
+        ],
+      },
     },
-    include: { conta: true },
+    include: {
+      conta: true,
+      lote: true,
+    },
   })
 
   function somarPorNatureza(natureza, tipo) {
@@ -155,7 +181,10 @@ export default async function DREPage({ params, searchParams }) {
 
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
           <FiltroPeriodo />
-          <BotaoImprimir />
+           <BotaoApuracao />
+          <div className="flex flex-wrap items-center gap-2">
+            <BotaoImprimir />
+          </div>
         </div>
 
         {lancamentosSemNaturezaDRE.length > 0 && (

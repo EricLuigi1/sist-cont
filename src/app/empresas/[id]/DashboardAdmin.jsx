@@ -1,7 +1,6 @@
 'use client'
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import BotaoApuracao from '@/components/BotaoApuracao'
 import { formatarMoeda } from '@/lib/formatacao'
 import { MetricCard } from '@/components/ui/metric-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,9 +20,6 @@ export default function DashboardAdmin({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <BotaoApuracao />
-      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <MetricCard

@@ -80,14 +80,7 @@ export default function LancamentosPage() {
   )
 
   function loteFoiEstornado(lote) {
-    return lotes.some(item => {
-      if (!item.historico?.startsWith('Estorno')) return false
-
-      return (
-        item.historico.includes(lote.id) ||
-        item.historico.includes(lote.historico)
-      )
-    })
+    return lotes.some(item => item.estornoDeId === lote.id)
   }
 
   return (
@@ -165,7 +158,7 @@ export default function LancamentosPage() {
               .filter(l => l.tipo === 'CREDITO')
               .reduce((acc, l) => acc + Number(l.valor), 0)
 
-            const isEstorno = lote.historico.startsWith('Estorno')
+            const isEstorno = Boolean(lote.estornoDeId) || lote.historico.startsWith('Estorno')
             const jaEstornado = !isEstorno && loteFoiEstornado(lote)
             const aberto = loteAberto === lote.id
             const podeEstornar =

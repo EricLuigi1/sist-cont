@@ -125,7 +125,7 @@ export async function POST(request, { params }) {
     )
   }
 
-  if (loteOriginal.historico.startsWith('Estorno')) {
+  if (loteOriginal.estornoDeId || loteOriginal.historico.startsWith('Estorno')) {
     return NextResponse.json(
       { erro: 'Não é possível estornar um lançamento de estorno.' },
       { status: 400 }
@@ -146,44 +146,29 @@ export async function POST(request, { params }) {
     )
   }
 
-  const estornoExistente = await prisma.lote.findFirst({
-    where: {
-      empresaId: id,
-      OR: [
-        {
-          historico: {
-            startsWith: 'Estorno',
-            contains: loteOriginal.id,
-          },
-        },
-        {
-          historico: {
-            startsWith: 'Estorno',
-            contains: loteOriginal.historico,
-          },
-        },
-      ],
-    },
-  })
-
-  if (estornoExistente) {
-    return NextResponse.json(
-      { erro: 'Este lançamento já foi estornado!' },
-      { status: 400 }
-    )
-  }
-
   const motivoLabel = motivosLabel[motivo]
- const historico = `Estorno por ${motivoLabel}: ${loteOriginal.historico}${observacao ? ` - ${observacao}` : ''}`
+  const historico = `Estorno do lote por ${motivoLabel}: ${loteOriginal.historico}${observacao ? ` - ${observacao}` : ''}`
 
   try {
     const loteEstorno = await prisma.$transaction(async tx => {
+      const estornoExistente = await tx.lote.findFirst({
+        where: {
+          empresaId: id,
+          estornoDeId: loteOriginal.id,
+        },
+      })
+
+      if (estornoExistente) {
+        throw new Error('ESTORNO_DUPLICADO')
+      }
+
       return tx.lote.create({
         data: {
           historico,
           data: dataEstorno,
           empresaId: id,
           usuarioId: session.user.id,
+          estornoDeId: loteOriginal.id,
           lancamentos: {
             create: loteOriginal.lancamentos.map(lancamento => ({
               valor: lancamento.valor,
@@ -195,6 +180,9 @@ export async function POST(request, { params }) {
           },
         },
       })
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
     })
 
     return NextResponse.json({
@@ -202,6 +190,13 @@ export async function POST(request, { params }) {
       loteId: loteEstorno.id,
     })
   } catch (error) {
+    if (error.message === 'ESTORNO_DUPLICADO') {
+      return NextResponse.json(
+        { erro: 'Este lançamento já foi estornado!' },
+        { status: 400 }
+      )
+    }
+
     console.error('Erro ao realizar estorno:', error)
 
     return NextResponse.json(

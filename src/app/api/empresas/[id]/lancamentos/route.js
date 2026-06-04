@@ -67,20 +67,12 @@ export async function GET(request, { params }) {
     )
   }
 
-  const lotes = await prisma.lote.findMany({
+ const lotes = await prisma.lote.findMany({
     where: { empresaId: id },
     orderBy: { criadoEm: 'desc' },
     include: {
-      lancamentos: {
-        include: {
-          conta: true,
-        },
-      },
-      usuario: {
-        select: {
-          nome: true,
-        },
-      },
+      lancamentos: { include: { conta: true } },
+      usuario: { select: { nome: true } },
     },
   })
 

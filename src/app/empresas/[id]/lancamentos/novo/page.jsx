@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -270,7 +270,6 @@ function LinhasLancamento({
 }
 
 export default function NovoLancamentoPage() {
-  const router = useRouter()
   const params = useParams()
   const id = params.id
 
@@ -278,6 +277,7 @@ export default function NovoLancamentoPage() {
   const [carregandoContas, setCarregandoContas] = useState(true)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [sucesso, setSucesso] = useState('')
   const [historico, setHistorico] = useState('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
   const [debitos, setDebitos] = useState([{ contaId: '', valor: '' }])
@@ -366,6 +366,8 @@ export default function NovoLancamentoPage() {
         tipo: 'CREDITO',
       })),
     ]
+
+    
 
     for (const movimento of movimentos) {
       const conta = contas.find(item => item.id === movimento.contaId)
@@ -487,6 +489,7 @@ export default function NovoLancamentoPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     setErro('')
+    setSucesso('')
 
     const validacao = validarFormulario()
 
@@ -506,10 +509,26 @@ export default function NovoLancamentoPage() {
 
       const data = await res.json().catch(() => null)
 
-      if (res.ok) {
-        router.push(`/empresas/${id}/lancamentos`)
-        return
-      }
+    if (res.ok) {
+      setSucesso('Lançamento salvo com sucesso!')
+      setHistorico('')
+      setData(new Date().toISOString().split('T')[0])
+      setDebitos([{ contaId: '', valor: '' }])
+      setCreditos([{ contaId: '', valor: '' }])
+      setErro('')
+
+      fetch(`/api/empresas/${id}/contas`, {
+        cache: 'no-store',
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setContas(data.filter(conta => conta.analitica))
+          }
+        })
+
+      return
+    }
 
       setErro(data?.erro || 'Erro ao salvar lançamento.')
     } catch {
@@ -539,7 +558,7 @@ export default function NovoLancamentoPage() {
           {erro}
         </Alert>
       )}
-
+  
       <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
         <Card className="rounded-3xl border-zinc-200 bg-white shadow-sm">
           <CardContent className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[1fr_180px]">

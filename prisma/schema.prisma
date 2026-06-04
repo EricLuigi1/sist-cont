@@ -92,7 +92,11 @@ model Lote {
   usuario     Usuario      @relation(fields: [usuarioId], references: [id])
   usuarioId   String
   lancamentos Lancamento[]
-  criadoEm   DateTime     @default(now())
+  criadoEm    DateTime     @default(now())
+
+  estornoDeId String?      @unique
+  estornoDe   Lote?        @relation("EstornoLote", fields: [estornoDeId], references: [id])
+  estornos    Lote[]       @relation("EstornoLote")
 }
 
 model Lancamento {
